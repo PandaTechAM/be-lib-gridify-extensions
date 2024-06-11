@@ -3,10 +3,10 @@
 Welcome to Pandatech.GridifyExtensions! This library builds on top of the popular Gridify package, adding new
 functionalities and simplifying its use for data filtering and pagination in .NET applications.
 
-## Why Use Pandatech.Gridify.Extensions?
+## Why Use Pandatech.GridifyExtensions?
 
 Gridify is a powerful tool for querying and filtering data. However, integrating it into your projects can sometimes
-involve repetitive code and extra setup. Pandatech.Gridify.Extensions aims to make your development process smoother by
+involve repetitive code and extra setup. Pandatech.GridifyExtensions aims to make your development process smoother by
 offering:
 
 - **Extended Functionality:** Additional methods to handle common data filtering scenarios.
