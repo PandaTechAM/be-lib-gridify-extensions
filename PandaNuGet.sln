@@ -1,10 +1,10 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PandaNuGet", "src\PandaNuGet\PandaNuGet.csproj", "{25001943-A870-4E17-A9B9-0D190CEC819B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GridifyExtensions", "src\GridifyExtensions\GridifyExtensions.csproj", "{25001943-A870-4E17-A9B9-0D190CEC819B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PandaNuGet.Tests", "test\PandaNuGet.Tests\PandaNuGet.Tests.csproj", "{0305E58F-1C47-454C-B10B-A223F2561A85}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GridifyExtensions.Tests", "test\GridifyExtensions.Tests\GridifyExtensions.Tests.csproj", "{0305E58F-1C47-454C-B10B-A223F2561A85}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PandaNuGet.Demo", "test\PandaNuGet.Demo\PandaNuGet.Demo.csproj", "{8A6AA36D-1CEF-4018-9C9D-7D029F3EAECE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GridifyExtensions.Demo", "test\GridifyExtensions.Demo\GridifyExtensions.Demo.csproj", "{8A6AA36D-1CEF-4018-9C9D-7D029F3EAECE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F8A6DCFE-8924-49A4-B3E9-2034593F54E5}"
 EndProject

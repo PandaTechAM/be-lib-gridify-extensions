@@ -1,4 +1,4 @@
-namespace PandaNuGet.Tests;
+namespace GridifyExtensions.Tests;
 
 public class UnitTest1
 {
