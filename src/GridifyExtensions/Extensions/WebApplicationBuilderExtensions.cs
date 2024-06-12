@@ -2,12 +2,17 @@
 using Microsoft.AspNetCore.Builder;
 using System.Reflection;
 
-namespace GridifyExtensions;
+namespace GridifyExtensions.Extensions;
 
 public static class WebApplicationBuilderExtensions
 {
     public static WebApplicationBuilder AddGridify(this WebApplicationBuilder builder, params Assembly[] assemblies)
     {
+        if (assemblies.Length == 0)
+        {
+            assemblies = [Assembly.GetCallingAssembly()];
+        }
+
         GridifyGlobalConfiguration.EnableEntityFrameworkCompatibilityLayer();
 
         QueryableExtensions.EntityGridifyMapperByType =

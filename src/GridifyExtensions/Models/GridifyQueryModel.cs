@@ -1,6 +1,7 @@
 ﻿using Gridify;
+using GridifyExtensions.Exceptions;
 
-namespace GridifyExtensions
+namespace GridifyExtensions.Models
 {
     public class GridifyQueryModel : GridifyQuery
     {
