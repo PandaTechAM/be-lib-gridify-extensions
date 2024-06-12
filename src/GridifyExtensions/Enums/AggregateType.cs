@@ -1,4 +1,4 @@
-﻿namespace GridifyExtensions;
+﻿namespace GridifyExtensions.Enums;
 public enum AggregateType
 {
     UniqueCount,

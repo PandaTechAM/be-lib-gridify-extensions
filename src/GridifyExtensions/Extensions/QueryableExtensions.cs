@@ -1,15 +1,17 @@
 ﻿using Gridify;
+using GridifyExtensions.Enums;
+using GridifyExtensions.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
-namespace GridifyExtensions;
+namespace GridifyExtensions.Extensions;
 
 public static class QueryableExtensions
 {
     internal static Dictionary<Type, object> EntityGridifyMapperByType = [];
 
     public static async Task<PagedResponse<TDto>> FilterOrderAndGetPagedAsync<TEntity, TDto>(this IQueryable<TEntity> query, GridifyQueryModel model,
-        Expression<Func<TEntity, TDto>> selectExpression, CancellationToken cancellationToken)
+        Expression<Func<TEntity, TDto>> selectExpression, CancellationToken cancellationToken = default)
     where TEntity : class
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
@@ -25,9 +27,9 @@ public static class QueryableExtensions
         return new PagedResponse<TDto>(await dtoQuery.ToListAsync(cancellationToken), model.Page, model.PageSize, totalCount);
     }
 
-    public static Task<PagedResponse<TEntity>> FilterOrderAndGetPagedAsync<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model, CancellationToken cancellationToken)
+    public static Task<PagedResponse<TEntity>> FilterOrderAndGetPagedAsync<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model, CancellationToken cancellationToken = default)
         where TEntity : class
-    => FilterOrderAndGetPagedAsync(query.AsNoTracking(), model, x => x, cancellationToken);
+    => query.AsNoTracking().FilterOrderAndGetPagedAsync(model, x => x, cancellationToken);
 
     public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
         where TEntity : class
@@ -45,7 +47,7 @@ public static class QueryableExtensions
         return query.AsNoTracking().ApplyOrdering(model, mapper);
     }
 
-    public static async Task<PagedResponse<TEntity>> GetPagedAsync<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model, CancellationToken cancellationToken)
+    public static async Task<PagedResponse<TEntity>> GetPagedAsync<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model, CancellationToken cancellationToken = default)
         where TEntity : class
     {
         var totalCount = await query.CountAsync(cancellationToken);
@@ -55,10 +57,10 @@ public static class QueryableExtensions
         return new PagedResponse<TEntity>(await query.ToListAsync(cancellationToken), model.Page, model.PageSize, totalCount);
     }
 
-    public static Task<PagedResponse<object>> ColumnDistinctValues<TEntity>(this IQueryable<TEntity> query,
+    public static Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
                                                                                  GridifyQueryModel model,
                                                                                  string columnName,
-                                                                                 CancellationToken cancellationToken)
+                                                                                 CancellationToken cancellationToken = default)
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
 
@@ -70,7 +72,7 @@ public static class QueryableExtensions
 
     public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
                                                                   AggregateModel model,
-                                                                  CancellationToken cancellationToken)
+                                                                  CancellationToken cancellationToken = default)
         where TEntity : class
     {
         var aggregateProperty = model.PropertyName;
@@ -88,5 +90,16 @@ public static class QueryableExtensions
             AggregateType.Max => await query2.MaxAsync(cancellationToken),
             _ => throw new NotImplementedException(),
         };
+    }
+
+    public static IEnumerable<MappingModel> GetMappings<TEntity>()
+    {
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+
+        return mapper!.GetCurrentMaps().Select(x => new MappingModel
+        {
+            Name = x.From,
+            Type = ((UnaryExpression)x.To.Body).Operand.Type.Name,
+        });
     }
 }
