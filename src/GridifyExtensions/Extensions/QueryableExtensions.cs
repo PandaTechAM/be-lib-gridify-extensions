@@ -64,14 +64,16 @@ public static class QueryableExtensions
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
 
-        return query.ApplyFilteringAndOrdering(model, mapper)
-                    .ApplySelect(columnName)
-                    .Distinct()
-                    .GetPagedAsync(model, cancellationToken);
+        return query
+                       .ApplyFiltering(model, mapper)
+                       .ApplySelect(columnName)
+                       .Distinct()
+                       .OrderBy(x => x ?? 0)
+                       .GetPagedAsync(model, cancellationToken);
     }
 
     public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
-                                                                  AggregateModel model,
+                                                                  AggregateQueryModel model,
                                                                   CancellationToken cancellationToken = default)
         where TEntity : class
     {
