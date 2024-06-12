@@ -18,11 +18,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\pandatech.png" Pack="true" PackagePath="\"/>
-        <None Include="..\..\Readme.md" Pack="true" PackagePath="\"/>
+        <None Include="..\..\pandatech.png" Pack="true" PackagePath="\" />
+        <None Include="..\..\Readme.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Gridify.EntityFramework" Version="2.14.2" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.6" />
     </ItemGroup>
 
