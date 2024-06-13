@@ -1,11 +1,15 @@
+using GridifyExtensions.Extensions;
+using System.Reflection;
+
 var builder = WebApplication.CreateBuilder(args);
 
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var app = builder.Build();
+builder.AddGridify(Assembly.GetExecutingAssembly());
 
+var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
