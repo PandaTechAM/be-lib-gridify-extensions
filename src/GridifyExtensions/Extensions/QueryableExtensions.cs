@@ -101,7 +101,9 @@ public static class QueryableExtensions
         return mapper!.GetCurrentMaps().Select(x => new MappingModel
         {
             Name = x.From,
-            Type = ((UnaryExpression)x.To.Body).Operand.Type.Name,
+            Type = x.To.Body is UnaryExpression ? (x.To.Body as UnaryExpression)!.Operand.Type.Name :
+                           x.To.Body is MethodCallExpression ? ((x.To.Body as MethodCallExpression)!.Arguments.Last() as LambdaExpression)?.ReturnType.Name
+                         : x.To.Body.Type.Name,
         });
     }
 }
