@@ -2,7 +2,9 @@
 
 namespace GridifyExtensions.Models;
 
-public class AggregateQueryModel : ColumnDistinctValueQueryModel
+public class AggregateQueryModel : GridifyQueryModel
+
 {
+    public required string PropertyName { get; set; }
     public required AggregateType AggregateType { get; set; }
 }

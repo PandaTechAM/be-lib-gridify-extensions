@@ -62,18 +62,36 @@ public static class QueryableExtensions
             totalCount);
     }
 
-    public static Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
+    public static async Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
         ColumnDistinctValueQueryModel model,
         CancellationToken cancellationToken = default)
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
 
-        return query
+        if (!model.Encrypted)
+        {
+            return await query
+                .ApplyFiltering(model, mapper)
+                .ApplySelect(model.PropertyName, mapper)
+                .Distinct()
+                .OrderBy(x => x ?? 0)
+                .GetPagedAsync(model, cancellationToken);
+        }
+
+        var item = await query
             .ApplyFiltering(model, mapper)
-            .ApplySelect(model.PropertyName, mapper)
-            .Distinct()
-            .OrderBy(x => x ?? 0)
-            .GetPagedAsync(model, cancellationToken);
+            .Select(CreateSelector<TEntity>(model.PropertyName))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return new PagedResponse<object>(item == null ? [] : [item], 1, 1, 1);
+    }
+    private static Expression<Func<T, object>> CreateSelector<T>(string propertyName)
+    {
+        var parameter = Expression.Parameter(typeof(T), "x");
+        var property = Expression.Property(parameter, propertyName);
+        var converted = Expression.Convert(property, typeof(object));
+
+        return Expression.Lambda<Func<T, object>>(converted, parameter);
     }
 
     public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
