@@ -102,7 +102,7 @@ public static class QueryableExtensions
         {
             Name = x.From,
             Type = x.To.Body is UnaryExpression ? (x.To.Body as UnaryExpression)!.Operand.Type.Name :
-                           x.To.Body is MethodCallExpression ? ((x.To.Body as MethodCallExpression)!.Arguments.Last() as LambdaExpression)?.ReturnType.Name
+                           x.To.Body is MethodCallExpression ? ((x.To.Body as MethodCallExpression)!.Arguments?.LastOrDefault() as LambdaExpression)?.ReturnType.Name ?? x.To.Body.Type.Name
                          : x.To.Body.Type.Name,
         });
     }
