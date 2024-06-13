@@ -70,7 +70,7 @@ public static class QueryableExtensions
 
         return query
             .ApplyFiltering(model, mapper)
-            .ApplySelect(model.PropertyName)
+            .ApplySelect(model.PropertyName, mapper)
             .Distinct()
             .OrderBy(x => x ?? 0)
             .GetPagedAsync(model, cancellationToken);
