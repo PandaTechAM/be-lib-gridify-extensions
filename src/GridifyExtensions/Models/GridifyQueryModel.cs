@@ -7,7 +7,7 @@ namespace GridifyExtensions.Models
     {
         public new int Page
         {
-            get { return base.Page; }
+            get => base.Page;
             set
             {
                 if (value <= 0)
@@ -21,7 +21,7 @@ namespace GridifyExtensions.Models
 
         public new int PageSize
         {
-            get { return base.PageSize; }
+            get => base.PageSize;
             set
             {
                 if (value <= 0)
@@ -40,13 +40,13 @@ namespace GridifyExtensions.Models
 
         public new string? OrderBy
         {
-            get { return base.OrderBy; }
-            set { base.OrderBy = value; }
+            get => base.OrderBy;
+            set => base.OrderBy = value;
         }
         public new string? Filter
         {
-            get { return base.Filter; }
-            set { base.Filter = value; }
+            get => base.Filter;
+            set => base.Filter = value;
         }
     }
 }
