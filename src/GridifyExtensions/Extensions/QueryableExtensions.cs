@@ -63,7 +63,7 @@ public static class QueryableExtensions
     }
 
     public static async Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
-        ColumnDistinctValueQueryModel model,
+        ColumnDistinctValueQueryModel model, Func<byte[], string>? decryptor = default,
         CancellationToken cancellationToken = default)
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
@@ -83,8 +83,15 @@ public static class QueryableExtensions
             .Select(CreateSelector<TEntity>(model.PropertyName))
             .FirstOrDefaultAsync(cancellationToken);
 
-        return new PagedResponse<object>(item == null ? [] : [item], 1, 1, 1);
+        if (item is null)
+        {
+            return new PagedResponse<object>([], 1, 1, 0);
+        }
+
+        var decryptedItem = decryptor!((byte[])item);
+        return new PagedResponse<object>([decryptedItem], 1, 1, 1);
     }
+
     private static Expression<Func<T, object>> CreateSelector<T>(string propertyName)
     {
         var parameter = Expression.Parameter(typeof(T), "x");
