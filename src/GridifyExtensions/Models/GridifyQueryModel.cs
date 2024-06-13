@@ -5,7 +5,7 @@ namespace GridifyExtensions.Models
 {
     public class GridifyQueryModel : GridifyQuery
     {
-        public new int Page
+        public new required int Page
         {
             get => base.Page;
             set
@@ -19,7 +19,7 @@ namespace GridifyExtensions.Models
             }
         }
 
-        public new int PageSize
+        public new required int PageSize
         {
             get => base.PageSize;
             set
@@ -43,6 +43,7 @@ namespace GridifyExtensions.Models
             get => base.OrderBy;
             set => base.OrderBy = value;
         }
+
         public new string? Filter
         {
             get => base.Filter;
