@@ -2,6 +2,7 @@
 using GridifyExtensions.Enums;
 using GridifyExtensions.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Collections;
 using System.Linq.Expressions;
 
 namespace GridifyExtensions.Extensions;
@@ -15,7 +16,7 @@ public static class QueryableExtensions
         Expression<Func<TEntity, TDto>> selectExpression, CancellationToken cancellationToken = default)
         where TEntity : class
     {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
         query = query.ApplyFilteringAndOrdering(model, mapper);
 
@@ -37,7 +38,7 @@ public static class QueryableExtensions
     public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
         where TEntity : class
     {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
         return query.AsNoTracking().ApplyFiltering(model, mapper);
     }
@@ -45,7 +46,7 @@ public static class QueryableExtensions
     public static IQueryable<TEntity> ApplyOrder<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
         where TEntity : class
     {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
         return query.AsNoTracking().ApplyOrdering(model, mapper);
     }
@@ -66,10 +67,25 @@ public static class QueryableExtensions
         ColumnDistinctValueQueryModel model, Func<byte[], string>? decryptor = default,
         CancellationToken cancellationToken = default)
     {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        if (!model.Encrypted)
+        if (!mapper!.IsEncrypted(model.PropertyName))
         {
+            if (mapper!.IsArray(model.PropertyName))
+            {
+
+                var data = await query.ApplyFiltering(model, mapper)
+                                      .ApplySelect(model.PropertyName, mapper)
+                                      .ToArrayAsync(cancellationToken);
+
+                var result = data.SelectMany(item => ((IList)item).Cast<object>())
+                                 .Distinct()
+                                 .ToList();
+
+                return new PagedResponse<object>(result, model.Page, model.PageSize, result.Count);
+            }
+
+
             return await query
                 .ApplyFiltering(model, mapper)
                 .ApplySelect(model.PropertyName, mapper)
@@ -102,13 +118,13 @@ public static class QueryableExtensions
     }
 
     public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
-        AggregateQueryModel model,
-        CancellationToken cancellationToken = default)
-        where TEntity : class
+      AggregateQueryModel model,
+      CancellationToken cancellationToken = default)
+      where TEntity : class
     {
         var aggregateProperty = model.PropertyName;
 
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
         var filteredQuery = query.ApplyFiltering(model, mapper).ApplySelect(aggregateProperty, mapper);
 
@@ -125,7 +141,7 @@ public static class QueryableExtensions
 
     public static IEnumerable<MappingModel> GetMappings<TEntity>()
     {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
         return mapper!.GetCurrentMaps().Select(x => new MappingModel
         {

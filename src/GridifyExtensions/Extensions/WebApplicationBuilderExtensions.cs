@@ -1,4 +1,5 @@
 ﻿using Gridify;
+using GridifyExtensions.Models;
 using Microsoft.AspNetCore.Builder;
 using System.Reflection;
 
@@ -22,7 +23,7 @@ public static class WebApplicationBuilderExtensions
                                                            && !t.IsAbstract
                                                             && t.BaseType != null
                                                             && t.BaseType.IsGenericType
-                                                            && t.BaseType.GetGenericTypeDefinition() == typeof(GridifyMapper<>))
+                                                            && t.BaseType.GetGenericTypeDefinition() == typeof(FilterMapper<>))
                                                    .Select(x => new KeyValuePair<Type, object>(x.BaseType!.GetGenericArguments()[0], Activator.CreateInstance(x)!)))
                                                    .ToDictionary(x => x.Key, x => x.Value);
 
