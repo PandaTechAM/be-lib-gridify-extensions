@@ -80,6 +80,7 @@ public static class QueryableExtensions
 
                 var result = data.SelectMany(item => ((IList)item).Cast<object>())
                                  .Distinct()
+                                 .OrderBy(x => x)
                                  .ToList();
 
                 return new PagedResponse<object>(result, model.Page, model.PageSize, result.Count);
