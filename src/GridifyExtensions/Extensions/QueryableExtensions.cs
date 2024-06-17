@@ -110,15 +110,15 @@ public static class QueryableExtensions
 
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
 
-        var query2 = query.ApplyFiltering(model, mapper).ApplySelect(aggregateProperty, mapper);
+        var filteredQuery = query.ApplyFiltering(model, mapper).ApplySelect(aggregateProperty, mapper);
 
         return model.AggregateType switch
         {
-            AggregateType.UniqueCount => await query2.Distinct().CountAsync(cancellationToken),
-            AggregateType.Sum => await query2.SumAsync(x => (decimal)x, cancellationToken),
-            AggregateType.Average => await query2.AverageAsync(x => (decimal)x, cancellationToken),
-            AggregateType.Min => await query2.MinAsync(cancellationToken),
-            AggregateType.Max => await query2.MaxAsync(cancellationToken),
+            AggregateType.UniqueCount => await filteredQuery.Distinct().CountAsync(cancellationToken),
+            AggregateType.Sum => await filteredQuery.SumAsync(x => (decimal)x, cancellationToken),
+            AggregateType.Average => await filteredQuery.AverageAsync(x => (decimal)x, cancellationToken),
+            AggregateType.Min => await filteredQuery.MinAsync(cancellationToken),
+            AggregateType.Max => await filteredQuery.MaxAsync(cancellationToken),
             _ => throw new NotImplementedException(),
         };
     }
