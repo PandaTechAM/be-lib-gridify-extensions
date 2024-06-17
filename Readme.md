@@ -35,7 +35,7 @@ builder.AddGridify(params Assembly[] assemblies);
 
 ## Usage
 **Creating Mappings for Your Entities:**
-To efficiently filter and query your Book entity using Gridify, you need to create a mapping class that extends GridifyMapper<T>.
+To efficiently filter and query your Book entity using Gridify, you need to create a mapping class that extends FilterMapper<T>.
 This class will define how each property in your Book entity should be mapped.
 
 Here’s an example of how to set up the Book entity and its corresponding mapping class:
@@ -52,7 +52,7 @@ public class Book
     public Book OtherBook { get; set; }
 }
 
-public class BookMapper : GridifyMapper<Book>
+public class BookMapper : FilterMapper<Book>
 {
     public BookMapper()
     {
