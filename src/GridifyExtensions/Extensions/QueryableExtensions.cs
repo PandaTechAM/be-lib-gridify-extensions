@@ -2,6 +2,7 @@
 using GridifyExtensions.Enums;
 using GridifyExtensions.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Collections;
 using System.Linq.Expressions;
 
 namespace GridifyExtensions.Extensions;
@@ -15,7 +16,9 @@ public static class QueryableExtensions
         Expression<Func<TEntity, TDto>> selectExpression, CancellationToken cancellationToken = default)
         where TEntity : class
     {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+        
+        model.OrderBy ??= mapper!.GetDefaultOrderExpression();
 
         query = query.ApplyFilteringAndOrdering(model, mapper);
 
@@ -37,7 +40,7 @@ public static class QueryableExtensions
     public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
         where TEntity : class
     {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
         return query.AsNoTracking().ApplyFiltering(model, mapper);
     }
@@ -45,7 +48,9 @@ public static class QueryableExtensions
     public static IQueryable<TEntity> ApplyOrder<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
         where TEntity : class
     {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+
+        model.OrderBy ??= mapper!.GetDefaultOrderExpression();
 
         return query.AsNoTracking().ApplyOrdering(model, mapper);
     }
@@ -66,10 +71,25 @@ public static class QueryableExtensions
         ColumnDistinctValueQueryModel model, Func<byte[], string>? decryptor = default,
         CancellationToken cancellationToken = default)
     {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        if (!model.Encrypted)
+        if (!mapper!.IsEncrypted(model.PropertyName))
         {
+            if (mapper!.IsArray(model.PropertyName))
+            {
+
+                var data = await query.ApplyFiltering(model, mapper)
+                                      .ApplySelect(model.PropertyName, mapper)
+                                      .ToArrayAsync(cancellationToken);
+
+                var result = data.SelectMany(item => ((IList)item).Cast<object>())
+                                 .Distinct()
+                                 .OrderBy(x => x)
+                                 .ToList();
+
+                return new PagedResponse<object>(result, model.Page, model.PageSize, result.Count);
+            }
+
             return await query
                 .ApplyFiltering(model, mapper)
                 .ApplySelect(model.PropertyName, mapper)
@@ -92,40 +112,31 @@ public static class QueryableExtensions
         return new PagedResponse<object>([decryptedItem], 1, 1, 1);
     }
 
-    private static Expression<Func<T, object>> CreateSelector<T>(string propertyName)
-    {
-        var parameter = Expression.Parameter(typeof(T), "x");
-        var property = Expression.Property(parameter, propertyName);
-        var converted = Expression.Convert(property, typeof(object));
-
-        return Expression.Lambda<Func<T, object>>(converted, parameter);
-    }
-
     public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
-        AggregateQueryModel model,
-        CancellationToken cancellationToken = default)
-        where TEntity : class
+      AggregateQueryModel model,
+      CancellationToken cancellationToken = default)
+      where TEntity : class
     {
         var aggregateProperty = model.PropertyName;
 
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        var query2 = query.ApplyFiltering(model, mapper).ApplySelect(aggregateProperty, mapper);
+        var filteredQuery = query.ApplyFiltering(model, mapper).ApplySelect(aggregateProperty, mapper);
 
         return model.AggregateType switch
         {
-            AggregateType.UniqueCount => await query2.Distinct().CountAsync(cancellationToken),
-            AggregateType.Sum => await query2.SumAsync(x => (decimal)x, cancellationToken),
-            AggregateType.Average => await query2.AverageAsync(x => (decimal)x, cancellationToken),
-            AggregateType.Min => await query2.MinAsync(cancellationToken),
-            AggregateType.Max => await query2.MaxAsync(cancellationToken),
+            AggregateType.UniqueCount => await filteredQuery.Distinct().CountAsync(cancellationToken),
+            AggregateType.Sum => await filteredQuery.SumAsync(x => (decimal)x, cancellationToken),
+            AggregateType.Average => await filteredQuery.AverageAsync(x => (decimal)x, cancellationToken),
+            AggregateType.Min => await filteredQuery.MinAsync(cancellationToken),
+            AggregateType.Max => await filteredQuery.MaxAsync(cancellationToken),
             _ => throw new NotImplementedException(),
         };
     }
 
     public static IEnumerable<MappingModel> GetMappings<TEntity>()
     {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as GridifyMapper<TEntity>;
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
         return mapper!.GetCurrentMaps().Select(x => new MappingModel
         {
@@ -137,5 +148,14 @@ public static class QueryableExtensions
                     .Name ?? x.To.Body.Type.Name
                     : x.To.Body.Type.Name,
         });
+    }
+
+    private static Expression<Func<T, object>> CreateSelector<T>(string propertyName)
+    {
+        var parameter = Expression.Parameter(typeof(T), "x");
+        var property = Expression.Property(parameter, propertyName);
+        var converted = Expression.Convert(property, typeof(object));
+
+        return Expression.Lambda<Func<T, object>>(converted, parameter);
     }
 }
