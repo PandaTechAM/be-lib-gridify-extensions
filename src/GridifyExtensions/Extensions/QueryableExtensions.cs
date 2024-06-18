@@ -17,6 +17,8 @@ public static class QueryableExtensions
         where TEntity : class
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+        
+        model.OrderBy ??= mapper!.GetDefaultOrderExpression();
 
         query = query.ApplyFilteringAndOrdering(model, mapper);
 
@@ -47,6 +49,8 @@ public static class QueryableExtensions
         where TEntity : class
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+
+        model.OrderBy ??= mapper!.GetDefaultOrderExpression();
 
         return query.AsNoTracking().ApplyOrdering(model, mapper);
     }
@@ -86,7 +90,6 @@ public static class QueryableExtensions
                 return new PagedResponse<object>(result, model.Page, model.PageSize, result.Count);
             }
 
-
             return await query
                 .ApplyFiltering(model, mapper)
                 .ApplySelect(model.PropertyName, mapper)
@@ -107,15 +110,6 @@ public static class QueryableExtensions
 
         var decryptedItem = decryptor!((byte[])item);
         return new PagedResponse<object>([decryptedItem], 1, 1, 1);
-    }
-
-    private static Expression<Func<T, object>> CreateSelector<T>(string propertyName)
-    {
-        var parameter = Expression.Parameter(typeof(T), "x");
-        var property = Expression.Property(parameter, propertyName);
-        var converted = Expression.Convert(property, typeof(object));
-
-        return Expression.Lambda<Func<T, object>>(converted, parameter);
     }
 
     public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
@@ -154,5 +148,14 @@ public static class QueryableExtensions
                     .Name ?? x.To.Body.Type.Name
                     : x.To.Body.Type.Name,
         });
+    }
+
+    private static Expression<Func<T, object>> CreateSelector<T>(string propertyName)
+    {
+        var parameter = Expression.Parameter(typeof(T), "x");
+        var property = Expression.Property(parameter, propertyName);
+        var converted = Expression.Convert(property, typeof(object));
+
+        return Expression.Lambda<Func<T, object>>(converted, parameter);
     }
 }
