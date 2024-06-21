@@ -94,7 +94,7 @@ public static class QueryableExtensions
                 .ApplyFiltering(model, mapper)
                 .ApplySelect(model.PropertyName, mapper)
                 .Distinct()
-                .OrderBy(x => x ?? 0)
+                .OrderBy(x => x)
                 .GetPagedAsync(model, cancellationToken);
         }
 
