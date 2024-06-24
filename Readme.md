@@ -105,15 +105,15 @@ var pagedResponse = await dbContext.Books
 
 Use ColumnDistinctValuesAsync to get distinct values of a specific column:
 ```csharp
-public static async Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(
-    this IQueryable<TEntity> query, ColumnDistinctValueQueryModel model,
+public static async Task<CursoredResponse<object>> ColumnDistinctValuesAsync<TEntity>(
+    this IQueryable<TEntity> query, ColumnDistinctValueCursoredQueryModel model,
     Func<byte[], string>? decryptor = default, CancellationToken cancellationToken = default)
 
 ```
 Example Usage:
 ```csharp
 var distinctValues = await dbContext.Books
-    .ColumnDistinctValuesAsync(new ColumnDistinctValueQueryModel { PropertyName = "Title" }, cancellationToken);
+    .ColumnDistinctValuesAsync(new ColumnDistinctValueCursoredQueryModel { PropertyName = "Title", PageSize=50, Filter="Title>abc" }, cancellationToken);
 ```
 
 Use AggregateAsync to perform aggregation operations on your data:

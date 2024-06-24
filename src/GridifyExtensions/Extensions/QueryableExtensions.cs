@@ -115,7 +115,7 @@ public static class QueryableExtensions
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        var gridifyModel = ColumnDistinctValueCursoredQueryModel.ToGridifyQueryModel(model);
+        var gridifyModel = model.ToGridifyQueryModel();
 
         if (!mapper!.IsEncrypted(model.PropertyName))
         {
