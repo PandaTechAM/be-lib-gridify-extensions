@@ -67,6 +67,7 @@ public static class QueryableExtensions
             totalCount);
     }
 
+    [Obsolete("Use ColumnDistinctValueCursoredQueryModel instead.")]
     public static async Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
         ColumnDistinctValueQueryModel model, Func<byte[], string>? decryptor = default,
         CancellationToken cancellationToken = default)
@@ -82,13 +83,18 @@ public static class QueryableExtensions
                 .OrderBy(x => x)
                 .GetPagedAsync(model, cancellationToken);
 
-            if (mapper!.NeedBase36Conversion(model.PropertyName))
+            if (mapper.NeedBase36Conversion(model.PropertyName))
             {
+                if (string.IsNullOrWhiteSpace(PandaBaseConverter.Base36Chars))
+                {
+                    throw new Exception("Base36Chars should be set before using Base36 conversion.");
+                }
+
                 return result with
                 {
                     Data = result.Data
-                                 .Select(x => PandaBaseConverter.Base10ToBase36((long)x) as object)
-                                 .ToList()
+                        .Select(x => PandaBaseConverter.Base10ToBase36((long)x) as object)
+                        .ToList()
                 };
             }
 
@@ -109,13 +115,14 @@ public static class QueryableExtensions
         return new PagedResponse<object>([decryptedItem], 1, 1, 1);
     }
 
-    public static async Task<CursoredResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
+    public static async Task<CursoredResponse<object>> ColumnDistinctValuesAsync<TEntity>(
+        this IQueryable<TEntity> query,
         ColumnDistinctValueCursoredQueryModel model, Func<byte[], string>? decryptor = default,
         CancellationToken cancellationToken = default)
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        var gridifyModel = ColumnDistinctValueCursoredQueryModel.ToGridifyQueryModel(model);
+        var gridifyModel = model.ToGridifyQueryModel();
 
         if (!mapper!.IsEncrypted(model.PropertyName))
         {
@@ -130,7 +137,7 @@ public static class QueryableExtensions
             if (mapper!.NeedBase36Conversion(model.PropertyName))
             {
                 result = result.Select(x => PandaBaseConverter.Base10ToBase36((long)x) as object)
-                               .ToList();
+                    .ToList();
             }
 
             return new CursoredResponse<object>(result, model.PageSize);
@@ -151,9 +158,9 @@ public static class QueryableExtensions
     }
 
     public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
-      AggregateQueryModel model,
-      CancellationToken cancellationToken = default)
-      where TEntity : class
+        AggregateQueryModel model,
+        CancellationToken cancellationToken = default)
+        where TEntity : class
     {
         var aggregateProperty = model.PropertyName;
 

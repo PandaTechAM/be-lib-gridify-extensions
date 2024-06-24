@@ -1,10 +1,3 @@
 ﻿namespace GridifyExtensions.Exceptions;
 
-public class GridifyException : Exception
-{
-    public GridifyException(string message)
-    : base(message)
-    {
-
-    }
-}
+public class GridifyException(string message) : Exception(message);
