@@ -4,7 +4,6 @@ using System.Linq.Expressions;
 
 namespace GridifyExtensions.Models;
 
-
 public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
 {
     internal const string Desc = " desc";
@@ -12,9 +11,9 @@ public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
 
     private string _defaultOrderExpression = string.Empty;
     private readonly HashSet<string> _encryptedColumns = [];
-    private readonly HashSet<string> _arrayColumns = [];
+    private readonly HashSet<string> _needBase36ConversionColumns = [];
 
-    internal bool IsArray(string column) => _arrayColumns.Contains(column);
+    internal bool NeedBase36Conversion(string column) => _needBase36ConversionColumns.Contains(column);
     internal bool IsEncrypted(string column) => _encryptedColumns.Contains(column);
 
     internal string GetDefaultOrderExpression() => _defaultOrderExpression;
@@ -50,16 +49,16 @@ public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
                                         Func<string, object>? convertor = null,
                                         bool overrideIfExists = true,
                                         bool isEncrypted = false,
-                                        bool isArray = false)
+                                        bool needBase36Conversion = false)
     {
         if (isEncrypted)
         {
             _encryptedColumns.Add(from);
         }
 
-        if (isArray)
+        if (needBase36Conversion)
         {
-            _arrayColumns.Add(from);
+            _needBase36ConversionColumns.Add(from);
         }
 
         return base.AddMap(from, to, convertor, overrideIfExists);
@@ -70,16 +69,16 @@ public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
         Func<string, object>? convertor = null,
         bool overrideIfExists = true,
         bool isEncrypted = false,
-        bool isArray = false)
+        bool needBase36Conversion = false)
     {
         if (isEncrypted)
         {
             _encryptedColumns.Add(from);
         }
 
-        if (isArray)
+        if (needBase36Conversion)
         {
-            _arrayColumns.Add(from);
+            _needBase36ConversionColumns.Add(from);
         }
 
         return base.AddMap(from, to, convertor, overrideIfExists);

@@ -1,4 +1,5 @@
-﻿using Gridify;
+﻿using BaseConverter;
+using Gridify;
 using GridifyExtensions.Models;
 using Microsoft.AspNetCore.Builder;
 using System.Reflection;
@@ -7,8 +8,10 @@ namespace GridifyExtensions.Extensions;
 
 public static class WebApplicationBuilderExtensions
 {
-    public static WebApplicationBuilder AddGridify(this WebApplicationBuilder builder, params Assembly[] assemblies)
+    public static WebApplicationBuilder AddGridify(this WebApplicationBuilder builder, string base36Chars, params Assembly[] assemblies)
     {
+        PandaBaseConverter.Base36Chars = base36Chars;
+
         if (assemblies.Length == 0)
         {
             assemblies = [Assembly.GetCallingAssembly()];
