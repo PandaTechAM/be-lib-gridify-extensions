@@ -124,6 +124,7 @@ public static class QueryableExtensions
                 .ApplySelect(model.PropertyName, mapper)
                 .Distinct()
                 .OrderBy(x => x ?? 0)
+                .Take(model.PageSize)
                 .ToListAsync(cancellationToken: cancellationToken);
 
             if (mapper!.NeedBase36Conversion(model.PropertyName))
