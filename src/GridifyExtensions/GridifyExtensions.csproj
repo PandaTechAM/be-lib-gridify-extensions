@@ -8,7 +8,7 @@
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <Authors>Pandatech</Authors>
         <Copyright>MIT</Copyright>
-        <Version>1.3.3</Version>
+        <Version>1.3.4</Version>
         <PackageId>Pandatech.GridifyExtensions</PackageId>
         <Title>Pandatech.Gridify.Extensions</Title>
         <PackageTags>Pandatech, library, Gridify, Pagination, Filters</PackageTags>
