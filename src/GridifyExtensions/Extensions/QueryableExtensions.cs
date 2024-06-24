@@ -79,7 +79,7 @@ public static class QueryableExtensions
                 .ApplyFiltering(model, mapper)
                 .ApplySelect(model.PropertyName, mapper)
                 .Distinct()
-                .OrderBy(x => x ?? 0)
+                .OrderBy(x => x)
                 .GetPagedAsync(model, cancellationToken);
 
             if (mapper!.NeedBase36Conversion(model.PropertyName))
@@ -123,7 +123,7 @@ public static class QueryableExtensions
                 .ApplyFiltering(gridifyModel, mapper)
                 .ApplySelect(model.PropertyName, mapper)
                 .Distinct()
-                .OrderBy(x => x ?? 0)
+                .OrderBy(x => x)
                 .Take(model.PageSize)
                 .ToListAsync(cancellationToken: cancellationToken);
 
