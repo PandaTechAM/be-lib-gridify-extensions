@@ -1,8 +1,8 @@
-﻿using Gridify;
+﻿using BaseConverter;
+using Gridify;
 using GridifyExtensions.Enums;
 using GridifyExtensions.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Collections;
 using System.Linq.Expressions;
 
 namespace GridifyExtensions.Extensions;
@@ -17,7 +17,7 @@ public static class QueryableExtensions
         where TEntity : class
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
-        
+
         model.OrderBy ??= mapper!.GetDefaultOrderExpression();
 
         query = query.ApplyFilteringAndOrdering(model, mapper);
@@ -75,13 +75,24 @@ public static class QueryableExtensions
 
         if (!mapper!.IsEncrypted(model.PropertyName))
         {
-
-            return await query
+            var result = await query
                 .ApplyFiltering(model, mapper)
                 .ApplySelect(model.PropertyName, mapper)
                 .Distinct()
-                .OrderBy(x => x ?? 0)
+                .OrderBy(x => x)
                 .GetPagedAsync(model, cancellationToken);
+
+            if (mapper!.NeedBase36Conversion(model.PropertyName))
+            {
+                return result with
+                {
+                    Data = result.Data
+                                 .Select(x => PandaBaseConverter.Base10ToBase36((long)x) as object)
+                                 .ToList()
+                };
+            }
+
+            return result;
         }
 
         var item = await query
@@ -97,25 +108,31 @@ public static class QueryableExtensions
         var decryptedItem = decryptor!((byte[])item);
         return new PagedResponse<object>([decryptedItem], 1, 1, 1);
     }
-    
+
     public static async Task<CursoredResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
         ColumnDistinctValueCursoredQueryModel model, Func<byte[], string>? decryptor = default,
         CancellationToken cancellationToken = default)
     {
         var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        var gridifyModel = ColumnDistinctValueCursoredQueryModel.ToGridifyQueryModel(model);
+        var gridifyModel = model.ToGridifyQueryModel();
 
         if (!mapper!.IsEncrypted(model.PropertyName))
         {
-
             var result = await query
                 .ApplyFiltering(gridifyModel, mapper)
                 .ApplySelect(model.PropertyName, mapper)
                 .Distinct()
-                .OrderBy(x => x ?? 0)
+                .OrderBy(x => x)
+                .Take(model.PageSize)
                 .ToListAsync(cancellationToken: cancellationToken);
-            
+
+            if (mapper!.NeedBase36Conversion(model.PropertyName))
+            {
+                result = result.Select(x => PandaBaseConverter.Base10ToBase36((long)x) as object)
+                               .ToList();
+            }
+
             return new CursoredResponse<object>(result, model.PageSize);
         }
 
