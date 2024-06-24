@@ -23,7 +23,7 @@ public class ColumnDistinctValueCursoredQueryModel
     }
 
     public required string PropertyName { get; set; }
-    public string Filter { get; set; } = null!;
+    public string? Filter { get; set; }
     
     public static GridifyQueryModel ToGridifyQueryModel(ColumnDistinctValueCursoredQueryModel model)
     {
