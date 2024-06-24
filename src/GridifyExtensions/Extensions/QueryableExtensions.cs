@@ -75,26 +75,12 @@ public static class QueryableExtensions
 
         if (!mapper!.IsEncrypted(model.PropertyName))
         {
-            if (mapper!.IsArray(model.PropertyName))
-            {
-
-                var data = await query.ApplyFiltering(model, mapper)
-                                      .ApplySelect(model.PropertyName, mapper)
-                                      .ToArrayAsync(cancellationToken);
-
-                var result = data.SelectMany(item => ((IList)item).Cast<object>())
-                                 .Distinct()
-                                 .OrderBy(x => x)
-                                 .ToList();
-
-                return new PagedResponse<object>(result, model.Page, model.PageSize, result.Count);
-            }
 
             return await query
                 .ApplyFiltering(model, mapper)
                 .ApplySelect(model.PropertyName, mapper)
                 .Distinct()
-                .OrderBy(x => x)
+                .OrderBy(x => x ?? 0)
                 .GetPagedAsync(model, cancellationToken);
         }
 
@@ -110,6 +96,41 @@ public static class QueryableExtensions
 
         var decryptedItem = decryptor!((byte[])item);
         return new PagedResponse<object>([decryptedItem], 1, 1, 1);
+    }
+    
+    public static async Task<CursoredResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
+        ColumnDistinctValueCursoredQueryModel model, Func<byte[], string>? decryptor = default,
+        CancellationToken cancellationToken = default)
+    {
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+
+        var gridifyModel = ColumnDistinctValueCursoredQueryModel.ToGridifyQueryModel(model);
+
+        if (!mapper!.IsEncrypted(model.PropertyName))
+        {
+
+            var result = await query
+                .ApplyFiltering(gridifyModel, mapper)
+                .ApplySelect(model.PropertyName, mapper)
+                .Distinct()
+                .OrderBy(x => x ?? 0)
+                .ToListAsync(cancellationToken: cancellationToken);
+            
+            return new CursoredResponse<object>(result, model.PageSize);
+        }
+
+        var item = await query
+            .ApplyFiltering(gridifyModel, mapper)
+            .Select(CreateSelector<TEntity>(model.PropertyName))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (item is null)
+        {
+            return new CursoredResponse<object>([], model.PageSize);
+        }
+
+        var decryptedItem = decryptor!((byte[])item);
+        return new CursoredResponse<object>([decryptedItem], model.PageSize);
     }
 
     public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
