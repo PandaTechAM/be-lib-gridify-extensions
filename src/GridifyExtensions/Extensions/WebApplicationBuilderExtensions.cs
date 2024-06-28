@@ -12,6 +12,11 @@ public static class WebApplicationBuilderExtensions
         params Assembly[] assemblies)
     {
         PandaBaseConverter.Base36Chars = base36Chars;
+        
+        if (assemblies.Length == 0)
+        {
+            assemblies = [Assembly.GetCallingAssembly()];
+        }
 
         AddGridify(assemblies);
 
@@ -20,6 +25,11 @@ public static class WebApplicationBuilderExtensions
 
     public static WebApplicationBuilder AddGridify(this WebApplicationBuilder builder, params Assembly[] assemblies)
     {
+        if (assemblies.Length == 0)
+        {
+            assemblies = [Assembly.GetCallingAssembly()];
+        }
+
         AddGridify(assemblies);
 
         return builder;
@@ -27,11 +37,6 @@ public static class WebApplicationBuilderExtensions
 
     private static void AddGridify(Assembly[] assemblies)
     {
-        if (assemblies.Length == 0)
-        {
-            assemblies = [Assembly.GetCallingAssembly()];
-        }
-
         GridifyGlobalConfiguration.EnableEntityFrameworkCompatibilityLayer();
 
         QueryableExtensions.EntityGridifyMapperByType =
