@@ -108,6 +108,11 @@ var pagedResponse = await dbContext.Books
 var gridifyQueryModel = new GridifyQueryModel(false) { PageSize = 10, Page = 1 };
 ```
 
+As an alternative solution you can use 'SetMaxPageSize()' method to set PageSize into 'int.MaxValue' instead of using constructor parameter.
+```csharp
+gridifyQueryModel.SetMaxPageSize();
+```
+
 Use ColumnDistinctValuesAsync to get distinct values of a specific column:
 ```csharp
 public static async Task<CursoredResponse<object>> ColumnDistinctValuesAsync<TEntity>(

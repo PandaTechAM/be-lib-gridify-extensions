@@ -11,7 +11,7 @@ namespace GridifyExtensions.Models
         {
             _validatePageSize = true;
         }
-        
+
         public GridifyQueryModel(bool validatePageSize)
         {
             _validatePageSize = validatePageSize;
@@ -60,6 +60,12 @@ namespace GridifyExtensions.Models
         {
             get => base.Filter;
             set => base.Filter = value;
+        }
+
+        public void SetMaxPageSize()
+        {
+            _validatePageSize = false;
+            PageSize = int.MaxValue;
         }
     }
 }
