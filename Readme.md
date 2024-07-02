@@ -38,7 +38,7 @@ builder.AddGridify(params Assembly[] assemblies);
 To efficiently filter and query your Book entity using Gridify, you need to create a mapping class that extends FilterMapper<T>.
 This class will define how each property in your Book entity should be mapped.
 
-Here’s an example of how to set up the Book entity and its corresponding mapping class:
+Hereâ€™s an example of how to set up the Book entity and its corresponding mapping class:
 ```csharp
 public class Book
 {
@@ -101,6 +101,11 @@ Example Usage:
 ```csharp
 var pagedResponse = await dbContext.Books
     .FilterOrderAndGetPagedAsync(new GridifyQueryModel { PageSize = 10, Page = 1 }, cancellationToken);
+```
+
+'GridifyQueryModel' by default has PageSize validation with 500 records. If you want to ignore this validation, you should pass bool 'false' into its constructor, otherwise the validation will be applied into it, and you will not be able to get more records.
+```csharp
+var gridifyQueryModel = new GridifyQueryModel(false) { PageSize = 10, Page = 1 };
 ```
 
 Use ColumnDistinctValuesAsync to get distinct values of a specific column:
