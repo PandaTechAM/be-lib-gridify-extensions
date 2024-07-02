@@ -28,6 +28,11 @@ public class SomeController : ControllerBase
     [HttpGet("test")]
     public IActionResult Get([FromQuery] GridifyQueryModel request)
     {
+        var t = new GridifyQueryModel(false)
+        {
+            Page = 1,
+            PageSize = int.MaxValue
+        };
         return Ok(request);
     }
 }
