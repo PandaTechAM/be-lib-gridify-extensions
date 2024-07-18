@@ -1,5 +1,4 @@
-﻿using BaseConverter;
-using Gridify;
+﻿using Gridify;
 using GridifyExtensions.Enums;
 using GridifyExtensions.Models;
 using Microsoft.EntityFrameworkCore;
@@ -83,21 +82,6 @@ public static class QueryableExtensions
                 .OrderBy(x => x)
                 .GetPagedAsync(model, cancellationToken);
 
-            if (mapper.NeedBase36Conversion(model.PropertyName))
-            {
-                if (string.IsNullOrWhiteSpace(PandaBaseConverter.Base36Chars))
-                {
-                    throw new Exception("Base36Chars should be set before using Base36 conversion.");
-                }
-
-                return result with
-                {
-                    Data = result.Data
-                        .Select(x => PandaBaseConverter.Base10ToBase36((long)x) as object)
-                        .ToList()
-                };
-            }
-
             return result;
         }
 
@@ -133,12 +117,6 @@ public static class QueryableExtensions
                 .OrderBy(x => x)
                 .Take(model.PageSize)
                 .ToListAsync(cancellationToken: cancellationToken);
-
-            if (mapper!.NeedBase36Conversion(model.PropertyName))
-            {
-                result = result.Select(x => PandaBaseConverter.Base10ToBase36((long)x) as object)
-                    .ToList();
-            }
 
             return new CursoredResponse<object>(result, model.PageSize);
         }
