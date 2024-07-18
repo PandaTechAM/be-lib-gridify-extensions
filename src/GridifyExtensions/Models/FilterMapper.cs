@@ -6,81 +6,69 @@ namespace GridifyExtensions.Models;
 
 public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
 {
-    internal const string Desc = " desc";
-    internal const string Separator = ", ";
+   internal const string Desc = " desc";
+   internal const string Separator = ", ";
 
-    private string _defaultOrderExpression = string.Empty;
-    private readonly HashSet<string> _encryptedColumns = [];
-    private readonly HashSet<string> _needBase36ConversionColumns = [];
+   private string _defaultOrderExpression = string.Empty;
+   private readonly HashSet<string> _encryptedColumns = [];
 
-    internal bool NeedBase36Conversion(string column) => _needBase36ConversionColumns.Contains(column);
-    internal bool IsEncrypted(string column) => _encryptedColumns.Contains(column);
+   internal bool IsEncrypted(string column) => _encryptedColumns.Contains(column);
 
-    internal string GetDefaultOrderExpression() => _defaultOrderExpression;
+   internal string GetDefaultOrderExpression() => _defaultOrderExpression;
 
-    public IOrderThenBy AddDefaultOrderBy(string column)
-    {
-        _defaultOrderExpression = column;
-        return this;
-    }
+   public IOrderThenBy AddDefaultOrderBy(string column)
+   {
+      _defaultOrderExpression = column;
+      return this;
+   }
 
-    public IOrderThenBy AddDefaultOrderByDescending(string column)
-    {
-        _defaultOrderExpression = column + Desc;
-        return this;
-    }
+   public IOrderThenBy AddDefaultOrderByDescending(string column)
+   {
+      _defaultOrderExpression = column + Desc;
+      return this;
+   }
 
-    IOrderThenBy IOrderThenBy.ThenBy(string column)
-    {
-        _defaultOrderExpression += Separator + column;
+   IOrderThenBy IOrderThenBy.ThenBy(string column)
+   {
+      _defaultOrderExpression += Separator + column;
 
-        return this;
-    }
+      return this;
+   }
 
-    IOrderThenBy IOrderThenBy.ThenByDescending(string column)
-    {
-        _defaultOrderExpression += Separator + column + Desc;
+   IOrderThenBy IOrderThenBy.ThenByDescending(string column)
+   {
+      _defaultOrderExpression += Separator + column + Desc;
 
-        return this;
-    }
+      return this;
+   }
 
-    public IGridifyMapper<T> AddMap(string from,
-                                        Expression<Func<T, object?>> to,
-                                        Func<string, object>? convertor = null,
-                                        bool overrideIfExists = true,
-                                        bool isEncrypted = false,
-                                        bool needBase36Conversion = false)
-    {
-        if (isEncrypted)
-        {
-            _encryptedColumns.Add(from);
-        }
+   public IGridifyMapper<T> AddMap(string from,
+      Expression<Func<T, object?>> to,
+      Func<string, object>? convertor = null,
+      bool overrideIfExists = true,
+      bool isEncrypted = false)
+   {
+      if (isEncrypted)
+      {
+         _encryptedColumns.Add(from);
+      }
 
-        if (needBase36Conversion)
-        {
-            _needBase36ConversionColumns.Add(from);
-        }
 
-        return base.AddMap(from, to, convertor, overrideIfExists);
-    }
+      return base.AddMap(from, to, convertor, overrideIfExists);
+   }
 
-    public IGridifyMapper<T> AddMap(string from,
-        Expression<Func<T, int, object?>> to,
-        Func<string, object>? convertor = null,
-        bool overrideIfExists = true,
-        bool isEncrypted = false,
-        bool needBase36Conversion = false)
-    {
-        if (isEncrypted)
-        {
-            _encryptedColumns.Add(from);
-        }
+   public IGridifyMapper<T> AddMap(string from,
+      Expression<Func<T, int, object?>> to,
+      Func<string, object>? convertor = null,
+      bool overrideIfExists = true,
+      bool isEncrypted = false)
+   {
+      if (isEncrypted)
+      {
+         _encryptedColumns.Add(from);
+      }
 
-        if (needBase36Conversion)
-        {
-            _needBase36ConversionColumns.Add(from);
-        }
 
-        return base.AddMap(from, to, convertor, overrideIfExists);
-    }
+      return base.AddMap(from, to, convertor, overrideIfExists);
+   }
 }

@@ -2,7 +2,6 @@ using GridifyExtensions.Extensions;
 using System.Reflection;
 using GridifyExtensions.Models;
 using Microsoft.AspNetCore.Mvc;
-using BaseConverter;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,7 +10,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
-builder.AddGridify(PandaBaseConverter.Base36Chars, Assembly.GetExecutingAssembly());
+builder.AddGridify(Assembly.GetExecutingAssembly());
 
 var app = builder.Build();
 
