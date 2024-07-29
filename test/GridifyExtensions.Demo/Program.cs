@@ -10,7 +10,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
-builder.AddGridify(string.Empty,Assembly.GetExecutingAssembly());
+builder.AddGridify(Assembly.GetExecutingAssembly());
 
 var app = builder.Build();
 

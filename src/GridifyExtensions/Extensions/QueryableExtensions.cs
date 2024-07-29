@@ -43,6 +43,21 @@ public static class QueryableExtensions
 
         return query.AsNoTracking().ApplyFiltering(model, mapper);
     }
+    
+    public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, string filter)
+       where TEntity : class
+    {
+       var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+
+       var model = new GridifyQueryModel
+       {
+          Page = 1,
+          PageSize = 1,
+          OrderBy = null,
+          Filter = filter
+       };
+       return query.AsNoTracking().ApplyFiltering(model, mapper);
+    }
 
     public static IQueryable<TEntity> ApplyOrder<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
         where TEntity : class
