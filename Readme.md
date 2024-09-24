@@ -1,44 +1,57 @@
 # Pandatech.GridifyExtensions
 
-Welcome to Pandatech.GridifyExtensions! This library builds on top of the popular Gridify package, adding new
-functionalities and simplifying its use for data filtering and pagination in .NET applications.
+Welcome to **Pandatech.GridifyExtensions**! This library extends the
+powerful [Gridify](https://github.com/alirezanet/Gridify) package, providing additional functionalities and a more
+streamlined API for data filtering, ordering, and pagination in .NET applications.
 
-## Why Use Pandatech.GridifyExtensions?
+## Why Choose Pandatech.GridifyExtensions?
 
-Gridify is a powerful tool for querying and filtering data. However, integrating it into your projects can sometimes
-involve repetitive code and extra setup. Pandatech.GridifyExtensions aims to make your development process smoother by
-offering:
+Gridify is great for dynamic querying, but incorporating it into projects can sometimes be repetitive or involve extra
+setup. **Pandatech.GridifyExtensions** makes this process more efficient by:
 
-- **Extended Functionality:** Additional methods to handle common data filtering scenarios.
-- **Simplified API:** Streamlined usage to minimize boilerplate code and enhance readability.
-- **Better Integration:** More intuitive integration with your existing .NET applications.
+- **Extending Functionality:** Additional methods to handle common data filtering, ordering, and pagination scenarios.
+- **Simplifying the API:** Reducing boilerplate code, making your code cleaner and easier to maintain.
+- **Improving Integration:** Seamlessly integrates with .NET and EF Core projects, reducing the overhead of adding
+  dynamic querying to your applications.
 
 ## Features
-- **Dynamic Filtering:** Easily apply dynamic filtering to your queries.
-- **Dynamic Ordering:** Easily apply dynamic ordering to your queries.
-- **Pagination Support:** Simplified methods for paginating your data.
-- **Custom Configurations:** Extend and customize Gridify configurations effortlessly.
-- **Global Injection:** Inject configurations globally for consistency across your application.
-- **Support for Various Data Types:** Handle multiple data types seamlessly.
-## Getting Started
-To get started, install the package via NuGet:
+
+- **Dynamic Filtering & Ordering:** Easily apply complex filters and ordering to your queries using simple methods.
+- **Pagination & Cursor Support:** Paginate data efficiently with support for both traditional pagination and
+  cursor-based pagination for better scalability.
+- **Custom Mappings:** Create custom property mappings for your entities to support advanced querying.
+- **Support for Encrypted Fields:** Automatically decrypt values with the provided decryptor function.
+- **Aggregation Support:** Perform common aggregate operations like sum, average, min, and max.
+
+## Installation
+
+Install the package via NuGet:
 
 ```bash
 dotnet add package Pandatech.Gridify.Extensions
 ```
 
-To enable Gridify support and register custom mapping classes, call the AddGridify method on the WebApplicationBuilder. 
-You can specify which assemblies to search for configurations.
+## Setup
+
+To enable Gridify support and register custom mapping classes, call the `AddGridify` method on the
+`WebApplicationBuilder`.
+
 ```csharp
 builder.AddGridify(params Assembly[] assemblies);
 ```
 
+You can specify which assemblies to search for configurations. If no assemblies are provided, the current assembly will
+be used.
+
 ## Usage
-**Creating Mappings for Your Entities:**
-To efficiently filter and query your Book entity using Gridify, you need to create a mapping class that extends FilterMapper<T>.
-This class will define how each property in your Book entity should be mapped.
+
+### Creating Mappings for Your Entities:
+
+To efficiently filter and query your Book entity using Gridify, you need to create a mapping class that extends
+`FilterMapper<T>.` This class will define how each property in your entity should be mapped for filtering.
 
 Here’s an example of how to set up the Book entity and its corresponding mapping class:
+
 ```csharp
 public class Book
 {
@@ -56,6 +69,7 @@ public class BookMapper : FilterMapper<Book>
 {
     public BookMapper()
     {
+        GenerateMappings();
         // Map "book-id" to BookId property
         AddMap("book-id", x => x.BookId);
 
@@ -73,68 +87,104 @@ public class BookMapper : FilterMapper<Book>
 
         // Map "other-book-id" to the BookId property of the OtherBook property
         AddMap("other-book-id", x => x.OtherBook.BookId);
+        
+      AddDefaultOrderByDescending("book-id");        
     }
 }
-
 ```
 
-Adding Converters
+### Adding Converters
 
-You can specify a converter function as the third parameter in the AddMap method to transform the value before it is used. 
+You can specify a converter function as the third parameter in the AddMap method to transform the value before it is
+used.
 This is useful for custom data manipulation and formatting.
 
-**Using Extension Methods**
-With Pandatech.GridifyExtensions, you can use several extension methods for filtering, sorting, and paging defined on the IQueryable<T> interface. Here are some examples:
-Filtering, Sorting, and Paging
-
-Use FilterOrderAndGetPagedAsync to apply filtering, sorting, and paging to your queries:
 ```csharp
-public static async Task<PagedResponse<TDto>> FilterOrderAndGetPagedAsync<TEntity, TDto>(
-    this IQueryable<TEntity> query, GridifyQueryModel model,
-    Expression<Func<TEntity, TDto>> selectExpression, CancellationToken cancellationToken = default)
+public class DeviceFilters : FilterMapper<Device>
+{
+   public DeviceFilters()
+   {
+      GenerateMappings();
+      AddMap("Name", x => x.Name.ToLower(), x => x.ToLower());
+      AddMap("OsType", x => x.OsType.ToLower(), x => x.ToLower());
+      AddMap("OsVersion", x => x.OsVersion.ToLower(), x => x.ToLower());
+      AddMap("BrowserType", x => x.BrowserType.ToLower(), x => x.ToLower());
+      AddMap("BrowserVersion", x => x.BrowserVersion.ToLower(), x => x.ToLower());
+      AddMap("UniqueIdPerDevice", x => x.UniqueIdPerDevice.ToLower(), x => x.ToLower());
+      AddMap("CreatedAt", x => x.CreatedAt, x => x.ToUtcDateTime()); //This is must for date time fields
+      AddMap("UpdatedAt", x => x.UpdatedAt, x => x.ToUtcDateTime()); //This is must for date time fields
 
-public static Task<PagedResponse<TEntity>> FilterOrderAndGetPagedAsync<TEntity>(
-    this IQueryable<TEntity> query, GridifyQueryModel model, CancellationToken cancellationToken = default)
+      AddDefaultOrderByDescending("Id");
+   }
+}
 ```
 
-Example Usage:
+### Filtering, Sorting, and Paging
+
+Use the `FilterOrderAndGetPagedAsync` method to apply filtering, sorting, and paging to your queries:
+
 ```csharp
 var pagedResponse = await dbContext.Books
     .FilterOrderAndGetPagedAsync(new GridifyQueryModel { PageSize = 10, Page = 1 }, cancellationToken);
 ```
 
-'GridifyQueryModel' by default has PageSize validation with 500 records. If you want to ignore this validation, you should pass bool 'false' into its constructor, otherwise the validation will be applied into it, and you will not be able to get more records.
+Use the `FilterOrderAndGetPagedAsync` method to apply filtering, sorting, and paging to your queries with selected
+columns:
+
+```csharp
+var pagedBooks = await dbContext.Books
+    .FilterOrderAndGetPagedAsync(new GridifyQueryModel { Page = 1, PageSize = 10 }, x => new BookDto { Title = x.Title }, cancellationToken);
+```
+
+```csharp
+
+**Gridify QueryModel**
+
+By default, `GridifyQueryModel` limits `PageSize` to 500 records. To remove this restriction, initialize it with
+`false`:
+
 ```csharp
 var gridifyQueryModel = new GridifyQueryModel(false) { PageSize = 10, Page = 1 };
 ```
 
-As an alternative solution you can use 'SetMaxPageSize()' method to set PageSize into 'int.MaxValue' instead of using constructor parameter.
+Alternatively, you can set the `PageSize` to the maximum value with:
+
 ```csharp
 gridifyQueryModel.SetMaxPageSize();
 ```
 
-Use ColumnDistinctValuesAsync to get distinct values of a specific column:
-```csharp
-public static async Task<CursoredResponse<object>> ColumnDistinctValuesAsync<TEntity>(
-    this IQueryable<TEntity> query, ColumnDistinctValueCursoredQueryModel model,
-    Func<byte[], string>? decryptor = default, CancellationToken cancellationToken = default)
+### Cursor-Based Pagination
 
+Use the `FilterOrderAndGetCursoredAsync` method for efficient, scalable cursor-based pagination:
+
+```csharp
+var cursoredResponse = await dbContext.Books
+.FilterOrderAndGetCursoredAsync(new GridifyCursoredQueryModel { PageSize = 50, Filter="Title>abc"}, cancellationToken);
 ```
-Example Usage:
+
+Use the `FilterOrderAndGetCursoredAsync` method for efficient, scalable cursor-based pagination with selected columns:
+
+```csharp
+var cursoredBooks = await dbContext.Books
+    .FilterOrderAndGetCursoredAsync(new GridifyCursoredQueryModel { PageSize = 50, Filter="Title>abc" }, x => new BookDto { Title = x.Title }, cancellationToken);
+```
+
+### Distinct Values with Cursors
+
+Get distinct values of a specific column using cursor-based pagination:
+
 ```csharp
 var distinctValues = await dbContext.Books
-    .ColumnDistinctValuesAsync(new ColumnDistinctValueCursoredQueryModel { PropertyName = "Title", PageSize=50, Filter="Title>abc" }, cancellationToken);
+    .ColumnDistinctValuesAsync(new ColumnDistinctValueCursoredQueryModel { PropertyName = "Title", PageSize = 50, Filter="Title>abc" }, cancellationToken);
 ```
 
-Use AggregateAsync to perform aggregation operations on your data:
-```csharp
-public static async Task<object> AggregateAsync<TEntity>(
-    this IQueryable<TEntity> query, AggregateQueryModel model, CancellationToken cancellationToken = default)
-```
-Example Usage:
+### Aggregation Operations
+
+Perform aggregate operations like sum, average, count, min, and max using `AggregateAsync`:
+
 ```csharp
 var aggregateResult = await dbContext.Books
-    .AggregateAsync(new AggregateQueryModel { AggregateType = AggregateType.Sum, PropertyName = "count" }, cancellationToken);
+    .AggregateAsync(new AggregateQueryModel { AggregateType = AggregateType.Sum, PropertyName = "Count" }, cancellationToken);
 ```
 
 ## License

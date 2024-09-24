@@ -8,13 +8,13 @@
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <Authors>Pandatech</Authors>
         <Copyright>MIT</Copyright>
-        <Version>1.5.4</Version>
+        <Version>1.6.0</Version>
         <PackageId>Pandatech.GridifyExtensions</PackageId>
         <Title>Pandatech.Gridify.Extensions</Title>
         <PackageTags>Pandatech, library, Gridify, Pagination, Filters</PackageTags>
         <Description>Pandatech.Gridify.Extensions simplifies and extends the functionality of the Gridify NuGet package. It provides additional extension methods and functionality to streamline data filtering and pagination, making it more intuitive and powerful to use in .NET applications. Our enhancements ensure more flexibility, reduce boilerplate code, and improve overall developer productivity when working with Gridify.</Description>
         <RepositoryUrl>https://github.com/PandaTechAM/be-lib-gridify-extensions</RepositoryUrl>
-        <PackageReleaseNotes>Apply filter new overload</PackageReleaseNotes>
+        <PackageReleaseNotes>Cursored model has been added</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
@@ -24,7 +24,7 @@
 
     <ItemGroup>
         <PackageReference Include="Gridify.EntityFramework" Version="2.14.2" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.6" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.8" />
     </ItemGroup>
 
 </Project>

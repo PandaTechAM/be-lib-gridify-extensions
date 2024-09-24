@@ -3,19 +3,9 @@ using GridifyExtensions.Exceptions;
 
 namespace GridifyExtensions.Models
 {
-    public class GridifyQueryModel : GridifyQuery
+    public class GridifyQueryModel(bool validatePageSize = true) : GridifyQuery
     {
-        private bool _validatePageSize;
-
-        public GridifyQueryModel()
-        {
-            _validatePageSize = true;
-        }
-
-        public GridifyQueryModel(bool validatePageSize)
-        {
-            _validatePageSize = validatePageSize;
-        }
+        private bool _validatePageSize = validatePageSize;
 
         public new required int Page
         {
