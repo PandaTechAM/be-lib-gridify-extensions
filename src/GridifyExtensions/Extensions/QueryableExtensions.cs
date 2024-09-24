@@ -8,192 +8,241 @@ namespace GridifyExtensions.Extensions;
 
 public static class QueryableExtensions
 {
-    internal static Dictionary<Type, object> EntityGridifyMapperByType = [];
+   internal static Dictionary<Type, object> EntityGridifyMapperByType = [];
 
-    public static async Task<PagedResponse<TDto>> FilterOrderAndGetPagedAsync<TEntity, TDto>(
-        this IQueryable<TEntity> query, GridifyQueryModel model,
-        Expression<Func<TEntity, TDto>> selectExpression, CancellationToken cancellationToken = default)
-        where TEntity : class
-    {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+   public static async Task<PagedResponse<TDto>> FilterOrderAndGetPagedAsync<TEntity, TDto>(
+      this IQueryable<TEntity> query,
+      GridifyQueryModel model,
+      Expression<Func<TEntity, TDto>> selectExpression,
+      CancellationToken cancellationToken = default)
+      where TEntity : class
+   {
+      var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        model.OrderBy ??= mapper!.GetDefaultOrderExpression();
+      model.OrderBy ??= mapper!.GetDefaultOrderExpression();
 
-        query = query.ApplyFilteringAndOrdering(model, mapper);
+      query = query.ApplyFilteringAndOrdering(model, mapper);
 
-        var totalCount = await query.CountAsync(cancellationToken);
+      var totalCount = await query.CountAsync(cancellationToken);
 
-        var dtoQuery = query.Select(selectExpression);
+      var dtoQuery = query.Select(selectExpression);
 
-        dtoQuery = dtoQuery.ApplyPaging(model.Page, model.PageSize);
+      dtoQuery = dtoQuery.ApplyPaging(model.Page, model.PageSize);
 
-        return new PagedResponse<TDto>(await dtoQuery.ToListAsync(cancellationToken), model.Page, model.PageSize,
-            totalCount);
-    }
+      return new PagedResponse<TDto>(await dtoQuery.ToListAsync(cancellationToken),
+         model.Page,
+         model.PageSize,
+         totalCount);
+   }
 
-    public static Task<PagedResponse<TEntity>> FilterOrderAndGetPagedAsync<TEntity>(this IQueryable<TEntity> query,
-        GridifyQueryModel model, CancellationToken cancellationToken = default)
-        where TEntity : class
-        => query.AsNoTracking().FilterOrderAndGetPagedAsync(model, x => x, cancellationToken);
+   public static Task<PagedResponse<TEntity>> FilterOrderAndGetPagedAsync<TEntity>(this IQueryable<TEntity> query,
+      GridifyQueryModel model,
+      CancellationToken cancellationToken = default)
+      where TEntity : class =>
+      query.AsNoTracking()
+           .FilterOrderAndGetPagedAsync(model, x => x, cancellationToken);
 
-    public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
-        where TEntity : class
-    {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+   public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
+      where TEntity : class
+   {
+      var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        return query.AsNoTracking().ApplyFiltering(model, mapper);
-    }
-    
-    public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, string filter)
-       where TEntity : class
-    {
-       var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+      return query.AsNoTracking()
+                  .ApplyFiltering(model, mapper);
+   }
 
-       var model = new GridifyQueryModel
-       {
-          Page = 1,
-          PageSize = 1,
-          OrderBy = null,
-          Filter = filter
-       };
-       return query.AsNoTracking().ApplyFiltering(model, mapper);
-    }
+   public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, string filter)
+      where TEntity : class
+   {
+      var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-    public static IQueryable<TEntity> ApplyOrder<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
-        where TEntity : class
-    {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+      var model = new GridifyQueryModel
+      {
+         Page = 1,
+         PageSize = 1,
+         OrderBy = null,
+         Filter = filter
+      };
+      return query.AsNoTracking()
+                  .ApplyFiltering(model, mapper);
+   }
 
-        model.OrderBy ??= mapper!.GetDefaultOrderExpression();
+   public static IQueryable<TEntity> ApplyOrder<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
+      where TEntity : class
+   {
+      var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        return query.AsNoTracking().ApplyOrdering(model, mapper);
-    }
+      model.OrderBy ??= mapper!.GetDefaultOrderExpression();
 
-    public static async Task<PagedResponse<TEntity>> GetPagedAsync<TEntity>(this IQueryable<TEntity> query,
-        GridifyQueryModel model, CancellationToken cancellationToken = default)
-        where TEntity : class
-    {
-        var totalCount = await query.CountAsync(cancellationToken);
+      return query.AsNoTracking()
+                  .ApplyOrdering(model, mapper);
+   }
 
-        query = query.ApplyPaging(model.Page, model.PageSize);
+   public static async Task<PagedResponse<TEntity>> GetPagedAsync<TEntity>(this IQueryable<TEntity> query,
+      GridifyQueryModel model,
+      CancellationToken cancellationToken = default)
+      where TEntity : class
+   {
+      var totalCount = await query.CountAsync(cancellationToken);
 
-        return new PagedResponse<TEntity>(await query.ToListAsync(cancellationToken), model.Page, model.PageSize,
-            totalCount);
-    }
+      query = query.ApplyPaging(model.Page, model.PageSize);
 
-    [Obsolete("Use ColumnDistinctValueCursoredQueryModel instead.")]
-    public static async Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
-        ColumnDistinctValueQueryModel model, Func<byte[], string>? decryptor = default,
-        CancellationToken cancellationToken = default)
-    {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+      return new PagedResponse<TEntity>(await query.ToListAsync(cancellationToken),
+         model.Page,
+         model.PageSize,
+         totalCount);
+   }
 
-        if (!mapper!.IsEncrypted(model.PropertyName))
-        {
-            var result = await query
-                .ApplyFiltering(model, mapper)
-                .ApplySelect(model.PropertyName, mapper)
-                .Distinct()
-                .OrderBy(x => x)
-                .GetPagedAsync(model, cancellationToken);
+   [Obsolete("Use ColumnDistinctValueCursoredQueryModel instead.")]
+   public static async Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
+      ColumnDistinctValueQueryModel model,
+      Func<byte[], string>? decryptor = default,
+      CancellationToken cancellationToken = default)
+   {
+      var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-            return result;
-        }
+      if (!mapper!.IsEncrypted(model.PropertyName))
+      {
+         var result = await query
+                            .ApplyFiltering(model, mapper)
+                            .ApplySelect(model.PropertyName, mapper)
+                            .Distinct()
+                            .OrderBy(x => x)
+                            .GetPagedAsync(model, cancellationToken);
 
-        var item = await query
-            .ApplyFiltering(model, mapper)
-            .Select(CreateSelector<TEntity>(model.PropertyName))
-            .FirstOrDefaultAsync(cancellationToken);
+         return result;
+      }
 
-        if (item is null)
-        {
-            return new PagedResponse<object>([], 1, 1, 0);
-        }
+      var item = await query
+                       .ApplyFiltering(model, mapper)
+                       .Select(CreateSelector<TEntity>(model.PropertyName))
+                       .FirstOrDefaultAsync(cancellationToken);
 
-        var decryptedItem = decryptor!((byte[])item);
-        return new PagedResponse<object>([decryptedItem], 1, 1, 1);
-    }
+      if (item is null)
+      {
+         return new PagedResponse<object>([], 1, 1, 0);
+      }
 
-    public static async Task<CursoredResponse<object>> ColumnDistinctValuesAsync<TEntity>(
-        this IQueryable<TEntity> query,
-        ColumnDistinctValueCursoredQueryModel model, Func<byte[], string>? decryptor = default,
-        CancellationToken cancellationToken = default)
-    {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+      var decryptedItem = decryptor!((byte[])item);
+      return new PagedResponse<object>([decryptedItem], 1, 1, 1);
+   }
 
-        var gridifyModel = model.ToGridifyQueryModel();
+   public static async Task<CursoredResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
+      ColumnDistinctValueCursoredQueryModel model,
+      Func<byte[], string>? decryptor = default,
+      CancellationToken cancellationToken = default)
+   {
+      var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        if (!mapper!.IsEncrypted(model.PropertyName))
-        {
-            var result = await query
-                .ApplyFiltering(gridifyModel, mapper)
-                .ApplySelect(model.PropertyName, mapper)
-                .Distinct()
-                .OrderBy(x => x)
-                .Take(model.PageSize)
-                .ToListAsync(cancellationToken: cancellationToken);
+      var gridifyModel = model.ToGridifyQueryModel();
 
-            return new CursoredResponse<object>(result, model.PageSize);
-        }
+      if (!mapper!.IsEncrypted(model.PropertyName))
+      {
+         var result = await query
+                            .ApplyFiltering(gridifyModel, mapper)
+                            .ApplySelect(model.PropertyName, mapper)
+                            .Distinct()
+                            .OrderBy(x => x)
+                            .Take(model.PageSize)
+                            .ToListAsync(cancellationToken: cancellationToken);
 
-        var item = await query
-            .ApplyFiltering(gridifyModel, mapper)
-            .Select(CreateSelector<TEntity>(model.PropertyName))
-            .FirstOrDefaultAsync(cancellationToken);
+         return new CursoredResponse<object>(result, model.PageSize);
+      }
 
-        if (item is null)
-        {
-            return new CursoredResponse<object>([], model.PageSize);
-        }
+      var item = await query
+                       .ApplyFiltering(gridifyModel, mapper)
+                       .Select(CreateSelector<TEntity>(model.PropertyName))
+                       .FirstOrDefaultAsync(cancellationToken);
 
-        var decryptedItem = decryptor!((byte[])item);
-        return new CursoredResponse<object>([decryptedItem], model.PageSize);
-    }
+      if (item is null)
+      {
+         return new CursoredResponse<object>([], model.PageSize);
+      }
 
-    public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
-        AggregateQueryModel model,
-        CancellationToken cancellationToken = default)
-        where TEntity : class
-    {
-        var aggregateProperty = model.PropertyName;
+      var decryptedItem = decryptor!((byte[])item);
+      return new CursoredResponse<object>([decryptedItem], model.PageSize);
+   }
 
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+   public static async Task<CursoredResponse<TDto>> FilterOrderAndGetCursoredAsync<TEntity, TDto>(
+      this IQueryable<TEntity> query,
+      GridifyCursoredQueryModel model,
+      Expression<Func<TEntity, TDto>> selectExpression,
+      CancellationToken cancellationToken = default)
+      where TEntity : class
+   {
+      var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-        var filteredQuery = query.ApplyFiltering(model, mapper).ApplySelect(aggregateProperty, mapper);
+      model.OrderBy ??= mapper!.GetDefaultOrderExpression();
 
-        return model.AggregateType switch
-        {
-            AggregateType.UniqueCount => await filteredQuery.Distinct().CountAsync(cancellationToken),
-            AggregateType.Sum => await filteredQuery.SumAsync(x => (decimal)x, cancellationToken),
-            AggregateType.Average => await filteredQuery.AverageAsync(x => (decimal)x, cancellationToken),
-            AggregateType.Min => await filteredQuery.MinAsync(cancellationToken),
-            AggregateType.Max => await filteredQuery.MaxAsync(cancellationToken),
-            _ => throw new NotImplementedException(),
-        };
-    }
+      query = query.ApplyFilteringAndOrdering(model, mapper);
 
-    public static IEnumerable<MappingModel> GetMappings<TEntity>()
-    {
-        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+      var totalCount = await query.CountAsync(cancellationToken);
 
-        return mapper!.GetCurrentMaps().Select(x => new MappingModel
-        {
-            Name = x.From,
-            Type = x.To.Body is UnaryExpression
-                ? (x.To.Body as UnaryExpression)!.Operand.Type.Name
-                : x.To.Body is MethodCallExpression
-                    ? ((x.To.Body as MethodCallExpression)!.Arguments.LastOrDefault() as LambdaExpression)?.ReturnType
-                    .Name ?? x.To.Body.Type.Name
-                    : x.To.Body.Type.Name,
-        });
-    }
+      var dtoQuery = query.Select(selectExpression);
 
-    private static Expression<Func<T, object>> CreateSelector<T>(string propertyName)
-    {
-        var parameter = Expression.Parameter(typeof(T), "x");
-        var property = Expression.Property(parameter, propertyName);
-        var converted = Expression.Convert(property, typeof(object));
+      var data = await dtoQuery
+                       .Take(model.PageSize)
+                       .ToListAsync(cancellationToken);
 
-        return Expression.Lambda<Func<T, object>>(converted, parameter);
-    }
+      return new CursoredResponse<TDto>(data, totalCount);
+   }
+
+   public static Task<CursoredResponse<TEntity>> FilterOrderAndGetCursoredAsync<TEntity>(this IQueryable<TEntity> query,
+      GridifyCursoredQueryModel model,
+      CancellationToken cancellationToken = default)
+      where TEntity : class =>
+      query
+         .AsNoTracking()
+         .FilterOrderAndGetCursoredAsync(model, x => x, cancellationToken);
+
+   public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
+      AggregateQueryModel model,
+      CancellationToken cancellationToken = default)
+      where TEntity : class
+   {
+      var aggregateProperty = model.PropertyName;
+
+      var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+
+      var filteredQuery = query.ApplyFiltering(model, mapper)
+                               .ApplySelect(aggregateProperty, mapper);
+
+      return model.AggregateType switch
+      {
+         AggregateType.UniqueCount => await filteredQuery.Distinct()
+                                                         .CountAsync(cancellationToken),
+         AggregateType.Sum => await filteredQuery.SumAsync(x => (decimal)x, cancellationToken),
+         AggregateType.Average => await filteredQuery.AverageAsync(x => (decimal)x, cancellationToken),
+         AggregateType.Min => await filteredQuery.MinAsync(cancellationToken),
+         AggregateType.Max => await filteredQuery.MaxAsync(cancellationToken),
+         _ => throw new NotImplementedException(),
+      };
+   }
+
+   public static IEnumerable<MappingModel> GetMappings<TEntity>()
+   {
+      var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+
+      return mapper!.GetCurrentMaps()
+                    .Select(x => new MappingModel
+                    {
+                       Name = x.From,
+                       Type = x.To.Body is UnaryExpression
+                          ? (x.To.Body as UnaryExpression)!.Operand.Type.Name
+                          : x.To.Body is MethodCallExpression
+                             ? ((x.To.Body as MethodCallExpression)!.Arguments.LastOrDefault() as LambdaExpression)
+                               ?.ReturnType
+                               .Name ?? x.To.Body.Type.Name
+                             : x.To.Body.Type.Name,
+                    });
+   }
+
+   private static Expression<Func<T, object>> CreateSelector<T>(string propertyName)
+   {
+      var parameter = Expression.Parameter(typeof(T), "x");
+      var property = Expression.Property(parameter, propertyName);
+      var converted = Expression.Convert(property, typeof(object));
+
+      return Expression.Lambda<Func<T, object>>(converted, parameter);
+   }
 }
