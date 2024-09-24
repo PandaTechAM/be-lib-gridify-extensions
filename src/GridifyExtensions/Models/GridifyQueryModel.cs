@@ -5,8 +5,6 @@ namespace GridifyExtensions.Models
 {
     public class GridifyQueryModel(bool validatePageSize = true) : GridifyQuery
     {
-        private bool _validatePageSize = validatePageSize;
-
         public new required int Page
         {
             get => base.Page;
@@ -31,7 +29,7 @@ namespace GridifyExtensions.Models
                     throw new GridifyException($"{nameof(PageSize)} should be positive number.");
                 }
 
-                if (value > 500 && _validatePageSize)
+                if (value > 500 && validatePageSize)
                 {
                     value = 500;
                 }
@@ -54,7 +52,7 @@ namespace GridifyExtensions.Models
 
         public void SetMaxPageSize()
         {
-            _validatePageSize = false;
+            validatePageSize = false;
             PageSize = int.MaxValue;
         }
     }
