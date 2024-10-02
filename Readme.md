@@ -137,7 +137,6 @@ var pagedBooks = await dbContext.Books
 ```
 
 ```csharp
-
 **Gridify QueryModel**
 
 By default, `GridifyQueryModel` limits `PageSize` to 500 records. To remove this restriction, initialize it with

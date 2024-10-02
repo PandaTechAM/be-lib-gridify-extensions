@@ -170,21 +170,21 @@ public static class QueryableExtensions
       CancellationToken cancellationToken = default)
       where TEntity : class
    {
+
       var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-      model.OrderBy ??= mapper!.GetDefaultOrderExpression();
+      var queryModel = model.ToGridifyQueryModel();
+      queryModel.OrderBy ??= mapper!.GetDefaultOrderExpression();
 
-      query = query.ApplyFilteringAndOrdering(model, mapper);
-
-      var totalCount = await query.CountAsync(cancellationToken);
-
+      query = query.ApplyFilteringAndOrdering(queryModel, mapper);
+      
       var dtoQuery = query.Select(selectExpression);
 
       var data = await dtoQuery
                        .Take(model.PageSize)
                        .ToListAsync(cancellationToken);
 
-      return new CursoredResponse<TDto>(data, totalCount);
+      return new CursoredResponse<TDto>(data, model.PageSize);
    }
 
    public static Task<CursoredResponse<TEntity>> FilterOrderAndGetCursoredAsync<TEntity>(this IQueryable<TEntity> query,

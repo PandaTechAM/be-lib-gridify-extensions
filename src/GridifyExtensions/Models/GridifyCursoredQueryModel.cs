@@ -3,7 +3,7 @@ using GridifyExtensions.Exceptions;
 
 namespace GridifyExtensions.Models;
 
-public class GridifyCursoredQueryModel : GridifyQuery
+public class GridifyCursoredQueryModel
 {
    private int _pageSize = 20;
    public required int PageSize
@@ -21,15 +21,16 @@ public class GridifyCursoredQueryModel : GridifyQuery
          _pageSize = value;
       }
    }
-
+   
    public string? Filter { get; set; }
-    
-   public GridifyQueryModel ToGridifyQueryModel()
+   
+   internal GridifyQueryModel ToGridifyQueryModel()
    {
       return new GridifyQueryModel
       {
-         Page = 1,
+         Page = 0,
          PageSize = PageSize,
+         OrderBy = "",
          Filter = Filter
       };
    }
