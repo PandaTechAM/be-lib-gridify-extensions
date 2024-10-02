@@ -3,9 +3,21 @@ using GridifyExtensions.Exceptions;
 
 namespace GridifyExtensions.Models
 {
-    public class GridifyQueryModel(bool validatePageSize = true) : GridifyQuery
+    public class GridifyQueryModel : GridifyQuery
     {
-        public new required int Page
+       private bool _validatePageSize;
+
+       public GridifyQueryModel()
+       {
+          _validatePageSize = true;
+       }
+
+       public GridifyQueryModel(bool validatePageSize)
+       {
+          _validatePageSize = validatePageSize;
+       }
+
+       public new required int Page
         {
             get => base.Page;
             set
@@ -29,7 +41,7 @@ namespace GridifyExtensions.Models
                     throw new GridifyException($"{nameof(PageSize)} should be positive number.");
                 }
 
-                if (value > 500 && validatePageSize)
+                if (value > 500 && _validatePageSize)
                 {
                     value = 500;
                 }
@@ -52,7 +64,7 @@ namespace GridifyExtensions.Models
 
         public void SetMaxPageSize()
         {
-            validatePageSize = false;
+            _validatePageSize = false;
             PageSize = int.MaxValue;
         }
     }
