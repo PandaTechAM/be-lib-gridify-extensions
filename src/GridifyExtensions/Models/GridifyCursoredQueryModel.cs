@@ -28,7 +28,7 @@ public class GridifyCursoredQueryModel
    {
       return new GridifyQueryModel
       {
-         Page = 0,
+         Page = 1,
          PageSize = PageSize,
          OrderBy = "",
          Filter = Filter
