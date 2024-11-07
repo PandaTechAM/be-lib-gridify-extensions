@@ -118,7 +118,7 @@ public static class QueryableExtensions
                        .Select(CreateSelector<TEntity>(model.PropertyName))
                        .FirstOrDefaultAsync(cancellationToken);
 
-      if (item is null || model.Filter is null)
+      if (item is null || string.IsNullOrEmpty(model.Filter))
       {
          return new PagedResponse<object>([], 1, 1, 0);
       }
@@ -154,7 +154,7 @@ public static class QueryableExtensions
                        .Select(CreateSelector<TEntity>(model.PropertyName))
                        .FirstOrDefaultAsync(cancellationToken);
 
-      if (item is null || model.Filter is null)
+      if (item is null || string.IsNullOrEmpty(model.Filter))
       {
          return new CursoredResponse<object>([], model.PageSize);
       }
