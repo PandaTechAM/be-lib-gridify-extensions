@@ -47,8 +47,7 @@ public static class QueryableExtensions
    {
       var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-      return query.AsNoTracking()
-                  .ApplyFiltering(model, mapper);
+      return query.ApplyFiltering(model, mapper);
    }
 
    public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, string filter)
@@ -63,8 +62,7 @@ public static class QueryableExtensions
          OrderBy = null,
          Filter = filter
       };
-      return query.AsNoTracking()
-                  .ApplyFiltering(model, mapper);
+      return query.ApplyFiltering(model, mapper);
    }
 
    public static IQueryable<TEntity> ApplyOrder<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
