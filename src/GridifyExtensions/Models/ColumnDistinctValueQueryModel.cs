@@ -2,5 +2,5 @@
 
 public class ColumnDistinctValueQueryModel : GridifyQueryModel
 {
-    public required string PropertyName { get; set; }
+   public required string PropertyName { get; set; }
 }

@@ -1,8 +1,8 @@
-﻿using Gridify;
+﻿using System.Reflection;
+using Gridify;
 using GridifyExtensions.Models;
 using GridifyExtensions.Operators;
 using Microsoft.AspNetCore.Builder;
-using System.Reflection;
 
 namespace GridifyExtensions.Extensions;
 
@@ -25,7 +25,7 @@ public static class WebApplicationBuilderExtensions
       GridifyGlobalConfiguration.EnableEntityFrameworkCompatibilityLayer();
       GridifyGlobalConfiguration.CustomOperators.Register<FlagOperator>();
 
-        QueryableExtensions.EntityGridifyMapperByType =
+      QueryableExtensions.EntityGridifyMapperByType =
          assemblies.SelectMany(assembly => assembly
                                            .GetTypes()
                                            .Where(t => t.IsClass
