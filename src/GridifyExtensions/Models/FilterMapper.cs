@@ -1,6 +1,6 @@
-﻿using Gridify;
+﻿using System.Linq.Expressions;
+using Gridify;
 using GridifyExtensions.Abstractions;
-using System.Linq.Expressions;
 
 namespace GridifyExtensions.Models;
 
@@ -8,25 +8,9 @@ public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
 {
    internal const string Desc = " desc";
    internal const string Separator = ", ";
-
-   private string _defaultOrderExpression = string.Empty;
    private readonly HashSet<string> _encryptedColumns = [];
 
-   internal bool IsEncrypted(string column) => _encryptedColumns.Contains(column);
-
-   internal string GetDefaultOrderExpression() => _defaultOrderExpression;
-
-   public IOrderThenBy AddDefaultOrderBy(string column)
-   {
-      _defaultOrderExpression = column;
-      return this;
-   }
-
-   public IOrderThenBy AddDefaultOrderByDescending(string column)
-   {
-      _defaultOrderExpression = column + Desc;
-      return this;
-   }
+   private string _defaultOrderExpression = string.Empty;
 
    IOrderThenBy IOrderThenBy.ThenBy(string column)
    {
@@ -39,6 +23,28 @@ public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
    {
       _defaultOrderExpression += Separator + column + Desc;
 
+      return this;
+   }
+
+   internal bool IsEncrypted(string column)
+   {
+      return _encryptedColumns.Contains(column);
+   }
+
+   internal string GetDefaultOrderExpression()
+   {
+      return _defaultOrderExpression;
+   }
+
+   public IOrderThenBy AddDefaultOrderBy(string column)
+   {
+      _defaultOrderExpression = column;
+      return this;
+   }
+
+   public IOrderThenBy AddDefaultOrderByDescending(string column)
+   {
+      _defaultOrderExpression = column + Desc;
       return this;
    }
 

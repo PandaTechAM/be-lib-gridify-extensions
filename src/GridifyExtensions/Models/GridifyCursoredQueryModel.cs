@@ -1,11 +1,11 @@
-﻿using Gridify;
-using GridifyExtensions.Exceptions;
+﻿using GridifyExtensions.Exceptions;
 
 namespace GridifyExtensions.Models;
 
 public class GridifyCursoredQueryModel
 {
    private int _pageSize = 20;
+
    public required int PageSize
    {
       get => _pageSize;
@@ -21,9 +21,9 @@ public class GridifyCursoredQueryModel
          _pageSize = value;
       }
    }
-   
+
    public string? Filter { get; set; }
-   
+
    internal GridifyQueryModel ToGridifyQueryModel()
    {
       return new GridifyQueryModel

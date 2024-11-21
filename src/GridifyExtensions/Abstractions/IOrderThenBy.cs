@@ -2,6 +2,6 @@
 
 public interface IOrderThenBy
 {
-    IOrderThenBy ThenBy(string column);
-    IOrderThenBy ThenByDescending(string column);
+   IOrderThenBy ThenBy(string column);
+   IOrderThenBy ThenByDescending(string column);
 }

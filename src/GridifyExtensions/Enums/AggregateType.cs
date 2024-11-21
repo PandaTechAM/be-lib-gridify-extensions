@@ -1,9 +1,10 @@
 ﻿namespace GridifyExtensions.Enums;
+
 public enum AggregateType
 {
-    UniqueCount,
-    Sum,
-    Average,
-    Min,
-    Max
+   UniqueCount,
+   Sum,
+   Average,
+   Min,
+   Max
 }

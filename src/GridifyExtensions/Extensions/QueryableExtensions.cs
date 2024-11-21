@@ -1,8 +1,8 @@
-﻿using Gridify;
+﻿using System.Linq.Expressions;
+using Gridify;
 using GridifyExtensions.Enums;
 using GridifyExtensions.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
 
 namespace GridifyExtensions.Extensions;
 
@@ -38,9 +38,11 @@ public static class QueryableExtensions
    public static Task<PagedResponse<TEntity>> FilterOrderAndGetPagedAsync<TEntity>(this IQueryable<TEntity> query,
       GridifyQueryModel model,
       CancellationToken cancellationToken = default)
-      where TEntity : class =>
-      query.AsNoTracking()
-           .FilterOrderAndGetPagedAsync(model, x => x, cancellationToken);
+      where TEntity : class
+   {
+      return query.AsNoTracking()
+                  .FilterOrderAndGetPagedAsync(model, x => x, cancellationToken);
+   }
 
    public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
       where TEntity : class
@@ -142,7 +144,7 @@ public static class QueryableExtensions
                             .Distinct()
                             .OrderBy(x => x)
                             .Take(model.PageSize)
-                            .ToListAsync(cancellationToken: cancellationToken);
+                            .ToListAsync(cancellationToken);
 
          return new CursoredResponse<object>(result, model.PageSize);
       }
@@ -168,14 +170,13 @@ public static class QueryableExtensions
       CancellationToken cancellationToken = default)
       where TEntity : class
    {
-
       var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
       var queryModel = model.ToGridifyQueryModel();
       queryModel.OrderBy ??= mapper!.GetDefaultOrderExpression();
 
       query = query.ApplyFilteringAndOrdering(queryModel, mapper);
-      
+
       var dtoQuery = query.Select(selectExpression);
 
       var data = await dtoQuery
@@ -188,10 +189,12 @@ public static class QueryableExtensions
    public static Task<CursoredResponse<TEntity>> FilterOrderAndGetCursoredAsync<TEntity>(this IQueryable<TEntity> query,
       GridifyCursoredQueryModel model,
       CancellationToken cancellationToken = default)
-      where TEntity : class =>
-      query
-         .AsNoTracking()
-         .FilterOrderAndGetCursoredAsync(model, x => x, cancellationToken);
+      where TEntity : class
+   {
+      return query
+             .AsNoTracking()
+             .FilterOrderAndGetCursoredAsync(model, x => x, cancellationToken);
+   }
 
    public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
       AggregateQueryModel model,
@@ -213,7 +216,7 @@ public static class QueryableExtensions
          AggregateType.Average => await filteredQuery.AverageAsync(x => (decimal)x, cancellationToken),
          AggregateType.Min => await filteredQuery.MinAsync(cancellationToken),
          AggregateType.Max => await filteredQuery.MaxAsync(cancellationToken),
-         _ => throw new NotImplementedException(),
+         _ => throw new NotImplementedException()
       };
    }
 
@@ -231,7 +234,7 @@ public static class QueryableExtensions
                              ? ((x.To.Body as MethodCallExpression)!.Arguments.LastOrDefault() as LambdaExpression)
                                ?.ReturnType
                                .Name ?? x.To.Body.Type.Name
-                             : x.To.Body.Type.Name,
+                             : x.To.Body.Type.Name
                     });
    }
 
