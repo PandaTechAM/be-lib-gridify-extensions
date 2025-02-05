@@ -3,18 +3,12 @@ using GridifyExtensions.Exceptions;
 
 namespace GridifyExtensions.Models;
 
-public class GridifyQueryModel : GridifyQuery
+public class GridifyQueryModel(bool validatePageSize) : GridifyQuery
 {
-   private bool _validatePageSize;
+   private bool _validatePageSize = validatePageSize;
 
-   public GridifyQueryModel()
+   public GridifyQueryModel() : this(true)
    {
-      _validatePageSize = true;
-   }
-
-   public GridifyQueryModel(bool validatePageSize)
-   {
-      _validatePageSize = validatePageSize;
    }
 
    public new required int Page
@@ -36,15 +30,12 @@ public class GridifyQueryModel : GridifyQuery
       get => base.PageSize;
       set
       {
-         if (value <= 0)
+         value = value switch
          {
-            throw new GridifyException($"{nameof(PageSize)} should be positive number.");
-         }
-
-         if (value > 500 && _validatePageSize)
-         {
-            value = 500;
-         }
+            <= 0 => throw new GridifyException($"{nameof(PageSize)} should be positive number."),
+            > 500 when _validatePageSize => 500,
+            _ => value
+         };
 
          base.PageSize = value;
       }
