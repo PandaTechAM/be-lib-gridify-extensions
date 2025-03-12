@@ -57,5 +57,6 @@ public class GridifyQueryModel(bool validatePageSize) : GridifyQuery
    {
       _validatePageSize = false;
       PageSize = int.MaxValue;
+      Page = 1;
    }
 }

@@ -8,22 +8,23 @@ namespace GridifyExtensions.Extensions;
 
 public static class WebApplicationBuilderExtensions
 {
-   public static WebApplicationBuilder AddGridify(this WebApplicationBuilder builder, params Assembly[] assemblies)
-   {
-      if (assemblies.Length == 0)
-      {
-         assemblies = [Assembly.GetCallingAssembly()];
-      }
+    public static WebApplicationBuilder AddGridify(this WebApplicationBuilder builder, params Assembly[] assemblies)
+    {
+        if (assemblies.Length == 0)
+        {
+            assemblies = [Assembly.GetCallingAssembly()];
+        }
 
-      AddGridify(assemblies);
+        AddGridify(assemblies);
 
-      return builder;
-   }
+        return builder;
+    }
 
-   private static void AddGridify(Assembly[] assemblies)
-   {
-      GridifyGlobalConfiguration.EnableEntityFrameworkCompatibilityLayer();
-      GridifyGlobalConfiguration.CustomOperators.Register<FlagOperator>();
+    private static void AddGridify(Assembly[] assemblies)
+    {
+        GridifyGlobalConfiguration.EnableEntityFrameworkCompatibilityLayer();
+        GridifyGlobalConfiguration.CaseInsensitiveFiltering = true;
+        GridifyGlobalConfiguration.CustomOperators.Register<FlagOperator>();
 
       QueryableExtensions.EntityGridifyMapperByType =
          assemblies.SelectMany(assembly => assembly
@@ -38,5 +39,5 @@ public static class WebApplicationBuilderExtensions
                                               new KeyValuePair<Type, object>(x.BaseType!.GetGenericArguments()[0],
                                                  Activator.CreateInstance(x)!)))
                    .ToDictionary(x => x.Key, x => x.Value);
-   }
+    }
 }
