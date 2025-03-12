@@ -8,7 +8,7 @@
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <Authors>Pandatech</Authors>
         <Copyright>MIT</Copyright>
-        <Version>2.0.3</Version>
+        <Version>2.0.4</Version>
         <PackageId>Pandatech.GridifyExtensions</PackageId>
         <Title>Pandatech.Gridify.Extensions</Title>
         <PackageTags>Pandatech, library, Gridify, Pagination, Filters</PackageTags>
@@ -23,8 +23,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Gridify.EntityFramework" Version="2.16.1" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.2" />
+        <PackageReference Include="Gridify.EntityFramework" Version="2.16.2" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.3" />
     </ItemGroup>
 
 </Project>
