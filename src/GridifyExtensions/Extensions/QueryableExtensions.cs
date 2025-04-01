@@ -23,9 +23,9 @@ public static class QueryableExtensions
 
       query = query.ApplyFilteringAndOrdering(model, mapper);
 
-      var totalCount = await query.CountAsync(cancellationToken);
-
       var dtoQuery = query.Select(selectExpression);
+
+      var totalCount = await dtoQuery.CountAsync(cancellationToken);
 
       dtoQuery = dtoQuery.ApplyPaging(model.Page, model.PageSize);
 
