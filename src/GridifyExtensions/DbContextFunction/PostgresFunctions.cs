@@ -2,6 +2,7 @@
 
 namespace GridifyExtensions.DbContextFunction;
 
+[Obsolete("After migration to Pandatech.Crypto 5, this class is not needed anymore.")]
 public class
    PostgresFunctions : DbContext //By inheriting PostgresFunctions you can use the Substr function in your queries
 {
