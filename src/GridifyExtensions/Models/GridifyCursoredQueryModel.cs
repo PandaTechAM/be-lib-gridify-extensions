@@ -36,7 +36,7 @@ public class GridifyCursoredQueryModel(bool validatePageSize)
       {
          Page = 1,
          PageSize = PageSize,
-         OrderBy = "",
+         OrderBy = null,
          Filter = Filter
       };
    }
