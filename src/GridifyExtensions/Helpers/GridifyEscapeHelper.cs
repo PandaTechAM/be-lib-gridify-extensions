@@ -17,7 +17,7 @@ internal static class GridifyEscapeHelper
          return filter;
       }
 
-      var esc = Regex.Replace(filter, @"(?<!\\)([(),|\$\<\>\=\^]|/i)", @"\$1");
+      var esc = Regex.Replace(filter, @"(?<!\\)([(),|$]|/i)", @"\$1");
 
       return esc;
    }
