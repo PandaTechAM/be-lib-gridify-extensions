@@ -1,6 +1,5 @@
 ﻿using Gridify;
 using GridifyExtensions.Exceptions;
-using GridifyExtensions.Helpers;
 
 namespace GridifyExtensions.Models;
 
@@ -51,7 +50,7 @@ public class GridifyQueryModel(bool validatePageSize) : GridifyQuery
    public new string? Filter
    {
       get => base.Filter;
-      set => base.Filter = GridifyEscapeHelper.ReplaceSpecialChars(value);
+      set => base.Filter = value;
    }
 
    public void SetMaxPageSize()
