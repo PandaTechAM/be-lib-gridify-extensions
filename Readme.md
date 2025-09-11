@@ -1,4 +1,4 @@
-# Pandatech.GridifyExtensions
+ # Pandatech.GridifyExtensions
 
 Welcome to **Pandatech.GridifyExtensions**! This library extends the
 powerful [Gridify](https://github.com/alirezanet/Gridify) package, providing additional functionalities and a more
