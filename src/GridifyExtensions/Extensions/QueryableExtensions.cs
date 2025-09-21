@@ -95,14 +95,17 @@ public static class QueryableExtensions
       var mapper = RequireMapper<TEntity>();
       model.OrderBy ??= mapper.GetDefaultOrderExpression();
 
-      query = query.ApplyFilteringAndOrdering(model, mapper);
+      var filtered = query.ApplyFiltering(model, mapper);
 
-      var totalCount = await query.CountAsync(cancellationToken);
+      var totalCount = await filtered.CountAsync(cancellationToken);
 
-      var dtoQuery = query.Select(selectExpression)
-                          .ApplyPaging(model.Page, model.PageSize);
+      var ordered = filtered.ApplyOrdering(model, mapper);
 
-      var data = await dtoQuery.ToListAsync(cancellationToken);
+      var data = await ordered
+                       .Select(selectExpression)
+                       .ApplyPaging(model.Page, model.PageSize)
+                       .ToListAsync(cancellationToken);
+      
       return new PagedResponse<TDto>(data, model.Page, model.PageSize, totalCount);
    }
 
