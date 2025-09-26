@@ -105,7 +105,7 @@ public static class QueryableExtensions
                        .Select(selectExpression)
                        .ApplyPaging(model.Page, model.PageSize)
                        .ToListAsync(cancellationToken);
-      
+
       return new PagedResponse<TDto>(data, model.Page, model.PageSize, totalCount);
    }
 
@@ -184,7 +184,8 @@ public static class QueryableExtensions
       return new PagedResponse<object>([decrypted], 1, 1, 1);
    }
 
-   public static async Task<CursoredResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
+   public static async Task<CursoredResponse<object?>> ColumnDistinctValuesAsync<TEntity>(
+      this IQueryable<TEntity> query,
       ColumnDistinctValueCursoredQueryModel model,
       Func<byte[], string>? decryptor = default,
       CancellationToken cancellationToken = default)
@@ -195,32 +196,79 @@ public static class QueryableExtensions
 
       if (!mapper.IsEncrypted(model.PropertyName))
       {
-         var result = await query
-                            .ApplyFiltering(gridifyModel, mapper)
-                            .ApplySelect(model.PropertyName, mapper)
+         var baseQuery = query
+                         .ApplyFiltering(gridifyModel, mapper)
+                         .ApplySelect(model.PropertyName, mapper);
+
+         var filterEmpty = string.IsNullOrWhiteSpace(gridifyModel.Filter);
+         var hasNull = false;
+         var take = model.PageSize;
+
+         if (filterEmpty)
+         {
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+            hasNull = await baseQuery.AnyAsync(x => x == null, cancellationToken);
+            if (hasNull && take > 0)
+            {
+               take -= 1;
+            }
+         }
+
+         var result = await baseQuery
                             .Distinct()
                             .OrderBy(x => x)
-                            .Take(model.PageSize)
+                            .Take(take)
                             .ToListAsync(cancellationToken);
 
-         return new CursoredResponse<object>(result, model.PageSize);
+         if (!filterEmpty || !hasNull)
+         {
+            return new CursoredResponse<object?>(result!, model.PageSize);
+         }
+
+         if (result.Count > 0 && ReferenceEquals(result[^1], null))
+         {
+            result.RemoveAt(result.Count - 1);
+         }
+
+         result.Insert(0, null!);
+         return new CursoredResponse<object?>(result!, model.PageSize);
       }
 
-      var item = await query
-                       .ApplyFiltering(gridifyModel, mapper)
-                       .Select(CreateSelector<TEntity>(model.PropertyName))
-                       .FirstOrDefaultAsync(cancellationToken);
+      // Encrypted (byte[]) path:
+      var encryptedQuery = query
+                           .ApplyFiltering(gridifyModel, mapper)
+                           .Select(CreateSelector<TEntity>(model.PropertyName));
 
-      if (item is null || string.IsNullOrEmpty(model.Filter))
-         return new CursoredResponse<object>([], model.PageSize);
+      if (string.IsNullOrWhiteSpace(model.Filter))
+      {
+         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+         var hasNull = await encryptedQuery.AnyAsync(x => x == null, cancellationToken);
+
+         if (hasNull)
+            return new CursoredResponse<object?>([null],
+               model.PageSize);
+
+         return new CursoredResponse<object?>([], model.PageSize);
+      }
+
+      var item = await encryptedQuery.FirstOrDefaultAsync(cancellationToken);
+      if (item is null)
+      {
+         return new CursoredResponse<object?>([], model.PageSize);
+      }
 
       if (decryptor is null)
       {
          throw new KeyNotFoundException("Decryptor is required for encrypted properties.");
       }
 
-      var decrypted = decryptor((byte[])item);
-      return new CursoredResponse<object>([decrypted], model.PageSize);
+      if (item is not byte[] bytes)
+      {
+         throw new InvalidCastException("Encrypted selector did not return a byte[] value.");
+      }
+
+      var decrypted = decryptor(bytes);
+      return new CursoredResponse<object?>([decrypted], model.PageSize);
    }
 
    // ---------- Aggregation ----------
