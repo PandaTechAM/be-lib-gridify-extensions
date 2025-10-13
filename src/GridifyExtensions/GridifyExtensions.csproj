@@ -8,13 +8,13 @@
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <Authors>Pandatech</Authors>
         <Copyright>MIT</Copyright>
-        <Version>2.1.2</Version>
+        <Version>2.1.3</Version>
         <PackageId>Pandatech.GridifyExtensions</PackageId>
         <Title>Pandatech.Gridify.Extensions</Title>
         <PackageTags>Pandatech, library, Gridify, Pagination, Filters</PackageTags>
         <Description>Pandatech.Gridify.Extensions simplifies and extends the functionality of the Gridify NuGet package. It provides additional extension methods and functionality to streamline data filtering and pagination, making it more intuitive and powerful to use in .NET applications. Our enhancements ensure more flexibility, reduce boilerplate code, and improve overall developer productivity when working with Gridify.</Description>
         <RepositoryUrl>https://github.com/PandaTechAM/be-lib-gridify-extensions</RepositoryUrl>
-        <PackageReleaseNotes>ColumnDistinctValue null handling extended</PackageReleaseNotes>
+        <PackageReleaseNotes>ColumnDistinctValue Encryption Handling Upgrade</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
@@ -23,7 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Gridify.EntityFramework" Version="2.16.3" />
+        <PackageReference Include="Gridify.EntityFramework" Version="2.17.0" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
     </ItemGroup>
 
