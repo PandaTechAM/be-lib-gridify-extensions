@@ -11,15 +11,6 @@ public static class QueryableExtensions
    internal static Dictionary<Type, object> EntityGridifyMapperByType = [];
 
    // ---------- Core helpers ----------
-
-
-   private static Expression<Func<T, object>> CreateSelector<T>(string propertyName)
-   {
-      var p = Expression.Parameter(typeof(T), "x");
-      var body = Expression.Convert(Expression.Property(p, propertyName), typeof(object));
-      return Expression.Lambda<Func<T, object>>(body, p);
-   }
-
    private static FilterMapper<TEntity> RequireMapper<TEntity>()
       where TEntity : class
    {
@@ -145,11 +136,11 @@ public static class QueryableExtensions
       query.AsNoTracking()
            .FilterOrderAndGetCursoredAsync(model, x => x, cancellationToken);
 
-   // ---------- Column Distinct ----------
+// ---------- Column Distinct ----------
    [Obsolete("Use ColumnDistinctValueCursoredQueryModel instead.")]
    public static async Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
       ColumnDistinctValueQueryModel model,
-      Func<byte[], string>? decryptor = default,
+      Func<byte[], string>? decryptor = null,
       CancellationToken cancellationToken = default)
       where TEntity : class
    {
@@ -166,37 +157,77 @@ public static class QueryableExtensions
          return result;
       }
 
-      // Encrypted path (scalar byte[] or IEnumerable<byte[]>), use mapper-driven selection
       var encryptedQuery = query
                            .ApplyFiltering(model, mapper)
                            .ApplySelect(model.PropertyName, mapper); // IQueryable<object?>
 
-      // Keep original behavior: if no filter, return empty for the obsolete API
       if (string.IsNullOrWhiteSpace(model.Filter))
       {
-         return new PagedResponse<object>([], 1, 1, 0);
+         bool hasNullLike;
+         try
+         {
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+            hasNullLike = await encryptedQuery.AnyAsync(x => x == null, cancellationToken);
+         }
+         catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+         {
+            // NOTE:
+            // Some providers cannot translate `Any(x => x == null)` when the projection is a COLLECTION
+            // (e.g., IEnumerable<byte[]> coming from a nav). We need to decide what to do without
+            // issuing a second, provider-specific query here.
+            //
+            // UX policy: when the frontend opens distinct-values with NO filter on an encrypted column,
+            // we prefer to SHOW the "null" option rather than hide it due to translation limits.
+            // Therefore we *assume* null-like exists. If you prefer strictness, set `hasNullLike = false`
+            hasNullLike = true;
+         }
+
+         return hasNullLike ? new PagedResponse<object>([null!], 1, 1, 1) : new PagedResponse<object>([], 1, 1, 0);
       }
 
       var selected = await encryptedQuery.FirstOrDefaultAsync(cancellationToken);
-      if (selected is null) return new PagedResponse<object>([], 1, 1, 0);
-      if (decryptor is null) throw new KeyNotFoundException("Decryptor is required for encrypted properties.");
-
-      object? decrypted = selected switch
+      switch (selected)
       {
-         byte[] b => decryptor(b),
-         IEnumerable<byte[]> bs => bs.FirstOrDefault() is byte[] fb ? decryptor(fb) : null,
-         _ => throw new InvalidCastException("Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.")
-      };
+         case null:
+         case byte[]
+         {
+            Length: 0
+         }:
+            return new PagedResponse<object>([null!], 1, 1, 1);
+         case byte[] sb:
+            return decryptor == null
+               ? throw new KeyNotFoundException("Decryptor is required for encrypted properties.")
+               : new PagedResponse<object>([decryptor(sb)], 1, 1, 1);
+      }
 
-      return decrypted is null
-         ? new PagedResponse<object>([], 1, 1, 0)
-         : new PagedResponse<object>([decrypted], 1, 1, 1);
+      if (selected is not IEnumerable<byte[]> seq)
+      {
+         throw new InvalidCastException("Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.");
+      }
+
+      var ng = ((System.Collections.IEnumerable)seq).GetEnumerator();
+      using var ng1 = ng as IDisposable;
+
+      if (!ng.MoveNext())
+      {
+         return new PagedResponse<object>([null!], 1, 1, 1);
+      }
+
+      var firstObj = ng.Current;
+      if (firstObj is not byte[] first || first.Length == 0)
+      {
+         return new PagedResponse<object>([null!], 1, 1, 1);
+      }
+
+      return decryptor == null
+         ? throw new KeyNotFoundException("Decryptor is required for encrypted properties.")
+         : new PagedResponse<object>([decryptor(first)], 1, 1, 1);
    }
 
    public static async Task<CursoredResponse<object?>> ColumnDistinctValuesAsync<TEntity>(
       this IQueryable<TEntity> query,
       ColumnDistinctValueCursoredQueryModel model,
-      Func<byte[], string>? decryptor = default,
+      Func<byte[], string>? decryptor = null,
       CancellationToken cancellationToken = default)
       where TEntity : class
    {
@@ -217,7 +248,10 @@ public static class QueryableExtensions
          {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             hasNull = await baseQuery.AnyAsync(x => x == null, cancellationToken);
-            if (hasNull && take > 0) take -= 1;
+            if (hasNull && take > 0)
+            {
+               take -= 1;
+            }
          }
 
          var result = await baseQuery
@@ -227,55 +261,86 @@ public static class QueryableExtensions
                             .ToListAsync(cancellationToken);
 
          if (!filterEmpty || !hasNull)
+         {
             return new CursoredResponse<object?>(result!, model.PageSize);
+         }
 
          if (result.Count > 0 && ReferenceEquals(result[^1], null))
+         {
             result.RemoveAt(result.Count - 1);
+         }
 
          result.Insert(0, null!);
          return new CursoredResponse<object?>(result!, model.PageSize);
       }
 
-      // Encrypted path (scalar byte[] or IEnumerable<byte[]>)
+      // Encrypted path
       var encryptedQuery = query
                            .ApplyFiltering(gridifyModel, mapper)
                            .ApplySelect(model.PropertyName, mapper); // IQueryable<object?>
 
       if (string.IsNullOrWhiteSpace(model.Filter))
       {
-         // EF-translatable: only checks if the projection itself is NULL in DB
-         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-         var hasNull = await encryptedQuery.AnyAsync(x => x == null, cancellationToken);
+         bool hasNullLike;
+         try
+         {
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+            hasNullLike = await encryptedQuery.AnyAsync(x => x == null, cancellationToken);
+         }
+         catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+         {
+            // NOTE:
+            // Some providers cannot translate `Any(x => x == null)` when the projection is a COLLECTION
+            // (e.g., IEnumerable<byte[]> coming from a nav). We need to decide what to do without
+            // issuing a second, provider-specific query here.
+            //
+            // UX policy: when the frontend opens distinct-values with NO filter on an encrypted column,
+            // we prefer to SHOW the "null" option rather than hide it due to translation limits.
+            // Therefore we *assume* null-like exists. If you prefer strictness, set `hasNullLike = false`
+            hasNullLike = true;
+         }
 
-         return hasNull
+         return hasNullLike
             ? new CursoredResponse<object?>([null], model.PageSize)
             : new CursoredResponse<object?>([], model.PageSize);
       }
 
       var selected = await encryptedQuery.FirstOrDefaultAsync(cancellationToken);
-      if (selected is null)
+      switch (selected)
       {
-         return new CursoredResponse<object?>([], model.PageSize);
+         case null:
+         case byte[]
+         {
+            Length: 0
+         }:
+            return new CursoredResponse<object?>([null], model.PageSize);
+         case byte[] when decryptor == null:
+            throw new KeyNotFoundException("Decryptor is required for encrypted properties.");
+         case byte[] sb:
+            return new CursoredResponse<object?>([decryptor(sb)], model.PageSize);
       }
 
-      if (decryptor is null)
+      if (selected is not IEnumerable<byte[]> seq)
       {
-         throw new KeyNotFoundException("Decryptor is required for encrypted properties.");
+         throw new InvalidCastException("Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.");
       }
 
-      object? decrypted = selected switch
+      var ng = ((System.Collections.IEnumerable)seq).GetEnumerator();
+      using var ng1 = ng as IDisposable;
+      if (!ng.MoveNext())
       {
-         byte[] b => decryptor(b),
-         IEnumerable<byte[]> bs => bs.FirstOrDefault() is
-            { } fb
-            ? decryptor(fb)
-            : null,
-         _ => throw new InvalidCastException("Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.")
-      };
+         return new CursoredResponse<object?>([null], model.PageSize);
+      }
 
-      return decrypted is null
-         ? new CursoredResponse<object?>([], model.PageSize)
-         : new CursoredResponse<object?>([decrypted], model.PageSize);
+      var firstObj = ng.Current;
+      if (firstObj is not byte[] first || first.Length == 0)
+      {
+         return new CursoredResponse<object?>([null], model.PageSize);
+      }
+
+      return decryptor == null
+         ? throw new KeyNotFoundException("Decryptor is required for encrypted properties.")
+         : new CursoredResponse<object?>([decryptor(first)], model.PageSize);
    }
 
    // ---------- Aggregation ----------
@@ -309,12 +374,13 @@ public static class QueryableExtensions
                     .Select(x => new MappingModel
                     {
                        Name = x.From,
-                       Type = x.To.Body is UnaryExpression ue
-                          ? ue.Operand.Type.Name
-                          : x.To.Body is MethodCallExpression mc
-                             ? ((mc.Arguments.LastOrDefault() as LambdaExpression)?.ReturnType?.Name)
-                               ?? x.To.Body.Type.Name
-                             : x.To.Body.Type.Name
+                       Type = x.To.Body switch
+                       {
+                          UnaryExpression ue => ue.Operand.Type.Name,
+                          MethodCallExpression mc => (mc.Arguments.LastOrDefault() as LambdaExpression)?.ReturnType.Name
+                                                     ?? x.To.Body.Type.Name,
+                          _ => x.To.Body.Type.Name
+                       }
                     });
    }
 }
