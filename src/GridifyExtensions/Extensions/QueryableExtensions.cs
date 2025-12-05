@@ -254,9 +254,23 @@ public static class QueryableExtensions
             }
          }
 
-         var result = await baseQuery
-                            .Distinct()
-                            .OrderBy(x => x)
+         // smart ordering for string values ---
+         var orderedQuery = baseQuery.Distinct();
+
+         if (typeof(string).IsAssignableFrom(orderedQuery.ElementType))
+         {
+            var stringQuery = (IQueryable<string?>)orderedQuery;
+
+            orderedQuery = stringQuery
+                           .OrderBy(x => x == null ? int.MaxValue : x.Length) // shorter first
+                           .ThenBy(x => x)!; // then lexicographic
+         }
+         else
+         {
+            orderedQuery = orderedQuery.OrderBy(x => x);
+         }
+
+         var result = await orderedQuery
                             .Take(take)
                             .ToListAsync(cancellationToken);
 
