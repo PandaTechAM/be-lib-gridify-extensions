@@ -3,6 +3,8 @@ using Gridify;
 using GridifyExtensions.Enums;
 using GridifyExtensions.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GridifyExtensions.Extensions;
 
@@ -236,56 +238,40 @@ public static class QueryableExtensions
 
       if (!mapper.IsEncrypted(model.PropertyName))
       {
-         var baseQuery = query
-                         .ApplyFiltering(gridifyModel, mapper)
-                         .ApplySelect(model.PropertyName, mapper);
+         var selectedNonEncrypted = query
+                                    .ApplyFiltering(gridifyModel, mapper)
+                                    .ApplySelect(model.PropertyName, mapper)
+                                    .Distinct();
 
-         var filterEmpty = string.IsNullOrWhiteSpace(gridifyModel.Filter);
-         var hasNull = false;
-         var take = model.PageSize;
-
-         if (filterEmpty)
+         var term = ExtractStarContainsTerm(model.Filter, model.PropertyName);
+         if (!string.IsNullOrEmpty(term) && IsStringColumn(query, mapper, model.PropertyName))
          {
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-            hasNull = await baseQuery.AnyAsync(x => x == null, cancellationToken);
-            if (hasNull && take > 0)
-            {
-               take -= 1;
-            }
+            var termLower = term.ToLower();
+
+            var projected = query
+                            .ApplyFiltering(gridifyModel, mapper)
+                            .Select(StringSelector(query, mapper, model.PropertyName))
+                            .Distinct();
+
+            var data = await projected
+                             .OrderBy(x => x == null ? 0 : 1)
+                             .ThenBy(x => x != null && x.ToLower() == termLower ? 0 : 1)
+                             .ThenBy(x => x == null ? int.MaxValue : x.Length)
+                             .ThenBy(x => x)
+                             .Take(model.PageSize)
+                             .ToListAsync(cancellationToken);
+
+            return new CursoredResponse<object?>(data.Cast<object?>()
+                                                     .ToList(),
+               model.PageSize);
          }
 
-         // smart ordering for string values ---
-         var orderedQuery = baseQuery.Distinct();
+         var data2 = await selectedNonEncrypted
+                           .OrderBy(x => (object?)x == null ? 0 : 1)
+                           .Take(model.PageSize)
+                           .ToListAsync(cancellationToken);
 
-         if (typeof(string).IsAssignableFrom(orderedQuery.ElementType))
-         {
-            var stringQuery = (IQueryable<string?>)orderedQuery;
-
-            orderedQuery = stringQuery
-                           .OrderBy(x => x == null ? int.MaxValue : x.Length) // shorter first
-                           .ThenBy(x => x)!; // then lexicographic
-         }
-         else
-         {
-            orderedQuery = orderedQuery.OrderBy(x => x);
-         }
-
-         var result = await orderedQuery
-                            .Take(take)
-                            .ToListAsync(cancellationToken);
-
-         if (!filterEmpty || !hasNull)
-         {
-            return new CursoredResponse<object?>(result!, model.PageSize);
-         }
-
-         if (result.Count > 0 && ReferenceEquals(result[^1], null))
-         {
-            result.RemoveAt(result.Count - 1);
-         }
-
-         result.Insert(0, null!);
-         return new CursoredResponse<object?>(result!, model.PageSize);
+         return new CursoredResponse<object?>(data2!, model.PageSize);
       }
 
       // Encrypted path
@@ -396,5 +382,93 @@ public static class QueryableExtensions
                           _ => x.To.Body.Type.Name
                        }
                     });
+   }
+   
+
+   private static Expression<Func<TEntity, string?>> EfStringSelector<TEntity>(string propertyName)
+      where TEntity : class
+   {
+      var e = Expression.Parameter(typeof(TEntity), "e");
+      var body = Expression.Call(
+         typeof(EF),
+         nameof(EF.Property),
+         [
+            typeof(string)
+         ],
+         e,
+         Expression.Constant(propertyName));
+
+      return Expression.Lambda<Func<TEntity, string?>>(body, e);
+   }
+
+   private static string? ExtractStarContainsTerm(string? filter, string propertyName)
+   {
+      if (string.IsNullOrWhiteSpace(filter)) return null;
+
+      var m = System.Text.RegularExpressions.Regex.Match(
+         filter,
+         $@"(?i)\b{System.Text.RegularExpressions.Regex.Escape(propertyName)}\s*=\s*\*(?<term>[^;,)]+)");
+
+      if (!m.Success) return null;
+
+      var term = m.Groups["term"]
+                  .Value
+                  .Trim();
+      return term.Length == 0 ? null : term;
+   }
+
+   private static bool IsStringColumn<TEntity>(IQueryable<TEntity> query, FilterMapper<TEntity> mapper, string name)
+      where TEntity : class
+   {
+      var db = TryGetDbContext(query);
+      var et = db?.Model.FindEntityType(typeof(TEntity));
+      var p = et?.FindProperty(name);
+      if (p != null)
+      {
+         return p.ClrType == typeof(string);
+      }
+
+      var map = mapper.GetCurrentMaps()
+                      .FirstOrDefault(m => m.From == name);
+      if (map == null)
+      {
+         return false;
+      }
+
+      var body = map.To.Body is UnaryExpression { NodeType: ExpressionType.Convert } ue ? ue.Operand : map.To.Body;
+      return body.Type == typeof(string);
+   }
+
+   private static Expression<Func<TEntity, string?>> StringSelector<TEntity>(IQueryable<TEntity> query,
+      FilterMapper<TEntity> mapper,
+      string name)
+      where TEntity : class
+   {
+      var db = TryGetDbContext(query);
+      var et = db?.Model.FindEntityType(typeof(TEntity));
+      var p = et?.FindProperty(name);
+
+      if (p != null)
+      {
+         return EfStringSelector<TEntity>(name);
+      }
+
+      var map = mapper.GetCurrentMaps()
+                      .FirstOrDefault(m => m.From == name)
+                ?? throw new KeyNotFoundException($"No map found for '{name}'.");
+
+      var param = map.To.Parameters[0];
+      var body = map.To.Body is UnaryExpression { NodeType: ExpressionType.Convert } ue ? ue.Operand : map.To.Body;
+
+      return body.Type != typeof(string)
+         ? throw new InvalidOperationException($"Map '{name}' must return string. Actual: {body.Type}.")
+         : Expression.Lambda<Func<TEntity, string?>>(body, param);
+   }
+
+   private static DbContext? TryGetDbContext<TEntity>(IQueryable<TEntity> query)
+   {
+      if (query is not IInfrastructure<IServiceProvider> infra) return null;
+      return infra.Instance.GetService<ICurrentDbContext>()
+                  ?.Context;
    }
 }
