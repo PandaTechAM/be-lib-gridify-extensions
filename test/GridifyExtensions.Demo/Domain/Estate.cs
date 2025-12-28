@@ -9,12 +9,12 @@ public class Estate
    public Building Building { get; set; } = null!;
 
    public decimal Sqm { get; set; }
-   public int? ResidentsQuantity { get; set; }          // nullable int
-   public decimal? Balance { get; set; }                // nullable decimal
+   public int? ResidentsQuantity { get; set; } // nullable int
+   public decimal? Balance { get; set; } // nullable decimal
 
-   public string? Comment { get; set; }                 // nullable string with null/" "/""
-   public string NonNullText { get; set; } = "";        // non-nullable string
-   
+   public string? Comment { get; set; } // nullable string with null/" "/""
+   public string NonNullText { get; set; } = ""; // non-nullable string
+
    public string? NumberText { get; set; }
 
    public DateTime CreatedAt { get; set; }

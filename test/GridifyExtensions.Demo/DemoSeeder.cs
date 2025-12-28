@@ -95,7 +95,9 @@ public sealed class DemoSeeder(PostgresContext db)
             // random tags (0..3)
             var tCount = rnd.Next(0, 4);
             for (var t = 0; t < tCount; t++)
+            {
                e.Tags.Add(tagList[rnd.Next(tagList.Count)]);
+            }
 
             estates.Add(e);
          }
@@ -135,7 +137,7 @@ public sealed class DemoSeeder(PostgresContext db)
          Tags = tagCount
       };
    }
-   
+
    private static string MakeNumberText(Random rnd, int idx)
    {
       // Fixed “must exist” cases to test search behavior
@@ -148,11 +150,16 @@ public sealed class DemoSeeder(PostgresContext db)
          7 => "918327983213",
          _ => rnd.Next(0, 6) switch
          {
-            0 => rnd.Next(0, 10).ToString(),                 // "3"
-            1 => rnd.Next(10, 100).ToString(),               // "33"
-            2 => rnd.Next(1000, 10000).ToString(),           // "1233"
-            3 => rnd.Next(0, 1_000_000).ToString("D7"),      // "0329333"
-            4 => rnd.NextInt64(10_000_000_000, 999_999_999_999).ToString(), // "918327983213"
+            0 => rnd.Next(0, 10)
+                    .ToString(), // "3"
+            1 => rnd.Next(10, 100)
+                    .ToString(), // "33"
+            2 => rnd.Next(1000, 10000)
+                    .ToString(), // "1233"
+            3 => rnd.Next(0, 1_000_000)
+                    .ToString("D7"), // "0329333"
+            4 => rnd.NextInt64(10_000_000_000, 999_999_999_999)
+                    .ToString(), // "918327983213"
             _ => $"{rnd.Next(0, 999)}{rnd.Next(0, 9999):D4}" // mixed
          }
       };

@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections;
+using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using Gridify;
 using GridifyExtensions.Enums;
 using GridifyExtensions.Models;
@@ -27,8 +29,10 @@ public static class QueryableExtensions
 
    // ---------- Filtering / Ordering ----------
    public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
-      where TEntity : class =>
-      query.ApplyFiltering(model, RequireMapper<TEntity>());
+      where TEntity : class
+   {
+      return query.ApplyFiltering(model, RequireMapper<TEntity>());
+   }
 
    public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, string filter)
       where TEntity : class
@@ -55,25 +59,25 @@ public static class QueryableExtensions
    // ---------- Paging (simple) ----------
    public static async Task<PagedResponse<TEntity>> GetPagedAsync<TEntity>(this IQueryable<TEntity> query,
       GridifyQueryModel model,
-      CancellationToken cancellationToken = default)
+      CancellationToken ct = default)
       where TEntity : class
    {
-      var totalCount = await query.CountAsync(cancellationToken);
+      var totalCount = await query.CountAsync(ct);
       query = query.ApplyPaging(model.Page, model.PageSize);
-      var data = await query.ToListAsync(cancellationToken);
+      var data = await query.ToListAsync(ct);
       return new PagedResponse<TEntity>(data, model.Page, model.PageSize, totalCount);
    }
 
    public static async Task<PagedResponse<TDto>> GetPagedAsync<TEntity, TDto>(this IQueryable<TEntity> query,
       GridifyQueryModel model,
       Expression<Func<TEntity, TDto>> selectExpression,
-      CancellationToken cancellationToken = default)
+      CancellationToken ct = default)
       where TEntity : class
    {
-      var totalCount = await query.CountAsync(cancellationToken);
+      var totalCount = await query.CountAsync(ct);
       var data = await query.Select(selectExpression)
                             .ApplyPaging(model.Page, model.PageSize)
-                            .ToListAsync(cancellationToken);
+                            .ToListAsync(ct);
       return new PagedResponse<TDto>(data, model.Page, model.PageSize, totalCount);
    }
 
@@ -82,7 +86,7 @@ public static class QueryableExtensions
       this IQueryable<TEntity> query,
       GridifyQueryModel model,
       Expression<Func<TEntity, TDto>> selectExpression,
-      CancellationToken cancellationToken = default)
+      CancellationToken ct = default)
       where TEntity : class
    {
       var mapper = RequireMapper<TEntity>();
@@ -90,31 +94,33 @@ public static class QueryableExtensions
 
       var filtered = query.ApplyFiltering(model, mapper);
 
-      var totalCount = await filtered.CountAsync(cancellationToken);
+      var totalCount = await filtered.CountAsync(ct);
 
       var ordered = filtered.ApplyOrdering(model, mapper);
 
       var data = await ordered
                        .Select(selectExpression)
                        .ApplyPaging(model.Page, model.PageSize)
-                       .ToListAsync(cancellationToken);
+                       .ToListAsync(ct);
 
       return new PagedResponse<TDto>(data, model.Page, model.PageSize, totalCount);
    }
 
    public static Task<PagedResponse<TEntity>> FilterOrderAndGetPagedAsync<TEntity>(this IQueryable<TEntity> query,
       GridifyQueryModel model,
-      CancellationToken cancellationToken = default)
-      where TEntity : class =>
-      query.AsNoTracking()
-           .FilterOrderAndGetPagedAsync(model, x => x, cancellationToken);
+      CancellationToken ct = default)
+      where TEntity : class
+   {
+      return query.AsNoTracking()
+                  .FilterOrderAndGetPagedAsync(model, x => x, ct);
+   }
 
    // ---------- Cursored ----------
    public static async Task<CursoredResponse<TDto>> FilterOrderAndGetCursoredAsync<TEntity, TDto>(
       this IQueryable<TEntity> query,
       GridifyCursoredQueryModel model,
       Expression<Func<TEntity, TDto>> selectExpression,
-      CancellationToken cancellationToken = default)
+      CancellationToken ct = default)
       where TEntity : class
    {
       var mapper = RequireMapper<TEntity>();
@@ -126,24 +132,26 @@ public static class QueryableExtensions
 
       var data = await query.Select(selectExpression)
                             .Take(model.PageSize)
-                            .ToListAsync(cancellationToken);
+                            .ToListAsync(ct);
 
       return new CursoredResponse<TDto>(data, model.PageSize);
    }
 
    public static Task<CursoredResponse<TEntity>> FilterOrderAndGetCursoredAsync<TEntity>(this IQueryable<TEntity> query,
       GridifyCursoredQueryModel model,
-      CancellationToken cancellationToken = default)
-      where TEntity : class =>
-      query.AsNoTracking()
-           .FilterOrderAndGetCursoredAsync(model, x => x, cancellationToken);
+      CancellationToken ct = default)
+      where TEntity : class
+   {
+      return query.AsNoTracking()
+                  .FilterOrderAndGetCursoredAsync(model, x => x, ct);
+   }
 
-// ---------- Column Distinct ----------
+   // ---------- Column Distinct ----------
    [Obsolete("Use ColumnDistinctValueCursoredQueryModel instead.")]
    public static async Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
       ColumnDistinctValueQueryModel model,
       Func<byte[], string>? decryptor = null,
-      CancellationToken cancellationToken = default)
+      CancellationToken ct = default)
       where TEntity : class
    {
       var mapper = RequireMapper<TEntity>();
@@ -155,7 +163,7 @@ public static class QueryableExtensions
                             .ApplySelect(model.PropertyName, mapper)
                             .Distinct()
                             .OrderBy(x => x)
-                            .GetPagedAsync(model, cancellationToken);
+                            .GetPagedAsync(model, ct);
          return result;
       }
 
@@ -169,7 +177,7 @@ public static class QueryableExtensions
          try
          {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-            hasNullLike = await encryptedQuery.AnyAsync(x => x == null, cancellationToken);
+            hasNullLike = await encryptedQuery.AnyAsync(x => x == null, ct);
          }
          catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
          {
@@ -187,7 +195,7 @@ public static class QueryableExtensions
          return hasNullLike ? new PagedResponse<object>([null!], 1, 1, 1) : new PagedResponse<object>([], 1, 1, 0);
       }
 
-      var selected = await encryptedQuery.FirstOrDefaultAsync(cancellationToken);
+      var selected = await encryptedQuery.FirstOrDefaultAsync(ct);
       switch (selected)
       {
          case null:
@@ -207,7 +215,7 @@ public static class QueryableExtensions
          throw new InvalidCastException("Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.");
       }
 
-      var ng = ((System.Collections.IEnumerable)seq).GetEnumerator();
+      var ng = ((IEnumerable)seq).GetEnumerator();
       using var ng1 = ng as IDisposable;
 
       if (!ng.MoveNext())
@@ -230,7 +238,7 @@ public static class QueryableExtensions
       this IQueryable<TEntity> query,
       ColumnDistinctValueCursoredQueryModel model,
       Func<byte[], string>? decryptor = null,
-      CancellationToken cancellationToken = default)
+      CancellationToken ct = default)
       where TEntity : class
    {
       var mapper = RequireMapper<TEntity>();
@@ -259,7 +267,7 @@ public static class QueryableExtensions
                              .ThenBy(x => x == null ? int.MaxValue : x.Length)
                              .ThenBy(x => x)
                              .Take(model.PageSize)
-                             .ToListAsync(cancellationToken);
+                             .ToListAsync(ct);
 
             return new CursoredResponse<object?>(data.Cast<object?>()
                                                      .ToList(),
@@ -269,7 +277,7 @@ public static class QueryableExtensions
          var data2 = await selectedNonEncrypted
                            .OrderBy(x => (object?)x == null ? 0 : 1)
                            .Take(model.PageSize)
-                           .ToListAsync(cancellationToken);
+                           .ToListAsync(ct);
 
          return new CursoredResponse<object?>(data2!, model.PageSize);
       }
@@ -285,7 +293,7 @@ public static class QueryableExtensions
          try
          {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-            hasNullLike = await encryptedQuery.AnyAsync(x => x == null, cancellationToken);
+            hasNullLike = await encryptedQuery.AnyAsync(x => x == null, ct);
          }
          catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
          {
@@ -305,7 +313,7 @@ public static class QueryableExtensions
             : new CursoredResponse<object?>([], model.PageSize);
       }
 
-      var selected = await encryptedQuery.FirstOrDefaultAsync(cancellationToken);
+      var selected = await encryptedQuery.FirstOrDefaultAsync(ct);
       switch (selected)
       {
          case null:
@@ -325,7 +333,7 @@ public static class QueryableExtensions
          throw new InvalidCastException("Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.");
       }
 
-      var ng = ((System.Collections.IEnumerable)seq).GetEnumerator();
+      var ng = ((IEnumerable)seq).GetEnumerator();
       using var ng1 = ng as IDisposable;
       if (!ng.MoveNext())
       {
@@ -346,7 +354,7 @@ public static class QueryableExtensions
    // ---------- Aggregation ----------
    public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
       AggregateQueryModel model,
-      CancellationToken cancellationToken = default)
+      CancellationToken ct = default)
       where TEntity : class
    {
       var mapper = RequireMapper<TEntity>();
@@ -356,11 +364,11 @@ public static class QueryableExtensions
       return model.AggregateType switch
       {
          AggregateType.UniqueCount => await filtered.Distinct()
-                                                    .CountAsync(cancellationToken),
-         AggregateType.Sum => await filtered.SumAsync(x => (decimal)x, cancellationToken),
-         AggregateType.Average => await filtered.AverageAsync(x => (decimal)x, cancellationToken),
-         AggregateType.Min => await filtered.MinAsync(cancellationToken),
-         AggregateType.Max => await filtered.MaxAsync(cancellationToken),
+                                                    .CountAsync(ct),
+         AggregateType.Sum => await filtered.SumAsync(x => (decimal)x, ct),
+         AggregateType.Average => await filtered.AverageAsync(x => (decimal)x, ct),
+         AggregateType.Min => await filtered.MinAsync(ct),
+         AggregateType.Max => await filtered.MaxAsync(ct),
          _ => throw new NotImplementedException()
       };
    }
@@ -383,7 +391,7 @@ public static class QueryableExtensions
                        }
                     });
    }
-   
+
 
    private static Expression<Func<TEntity, string?>> EfStringSelector<TEntity>(string propertyName)
       where TEntity : class
@@ -403,13 +411,19 @@ public static class QueryableExtensions
 
    private static string? ExtractStarContainsTerm(string? filter, string propertyName)
    {
-      if (string.IsNullOrWhiteSpace(filter)) return null;
+      if (string.IsNullOrWhiteSpace(filter))
+      {
+         return null;
+      }
 
-      var m = System.Text.RegularExpressions.Regex.Match(
+      var m = Regex.Match(
          filter,
-         $@"(?i)\b{System.Text.RegularExpressions.Regex.Escape(propertyName)}\s*=\s*\*(?<term>[^;,)]+)");
+         $@"(?i)\b{Regex.Escape(propertyName)}\s*=\s*\*(?<term>[^;,)]+)");
 
-      if (!m.Success) return null;
+      if (!m.Success)
+      {
+         return null;
+      }
 
       var term = m.Groups["term"]
                   .Value
@@ -467,7 +481,11 @@ public static class QueryableExtensions
 
    private static DbContext? TryGetDbContext<TEntity>(IQueryable<TEntity> query)
    {
-      if (query is not IInfrastructure<IServiceProvider> infra) return null;
+      if (query is not IInfrastructure<IServiceProvider> infra)
+      {
+         return null;
+      }
+
       return infra.Instance.GetService<ICurrentDbContext>()
                   ?.Context;
    }

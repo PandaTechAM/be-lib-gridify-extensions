@@ -1,7 +1,7 @@
-using GridifyExtensions.Extensions;
 using System.Reflection;
 using GridifyExtensions.Demo;
 using GridifyExtensions.Demo.Context;
+using GridifyExtensions.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

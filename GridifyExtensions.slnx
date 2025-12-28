@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".github/workflows/main.yml" />
+    <File Path=".gitignore" />
+    <File Path="global.json" />
+    <File Path="Readme.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/GridifyExtensions/GridifyExtensions.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/GridifyExtensions.Demo/GridifyExtensions.Demo.csproj" />
+    <Project Path="test/GridifyExtensions.Tests/GridifyExtensions.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -5,7 +5,7 @@ namespace GridifyExtensions.Models;
 public class GridifyCursoredQueryModel(bool validatePageSize)
 {
    private int _pageSize = 20;
-   
+
    private bool _validatePageSize = validatePageSize;
 
    public GridifyCursoredQueryModel() : this(true)
@@ -40,7 +40,7 @@ public class GridifyCursoredQueryModel(bool validatePageSize)
          Filter = Filter
       };
    }
-   
+
    public void SetMaxPageSize()
    {
       _validatePageSize = false;
