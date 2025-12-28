@@ -1,7 +1,6 @@
 ﻿using GridifyExtensions.Demo.Context;
 using GridifyExtensions.Extensions;
 using GridifyExtensions.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace GridifyExtensions.Demo;
 
@@ -47,7 +46,7 @@ public static class Endpoints
             CancellationToken ct) =>
          {
             var response = await db.Estates
-                                   .ColumnDistinctValuesAsync(request, cancellationToken: ct);
+                                   .ColumnDistinctValuesAsync(request, ct: ct);
 
             return Results.Ok(response);
          });

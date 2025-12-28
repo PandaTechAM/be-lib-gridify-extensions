@@ -1,30 +1,44 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <PackageIcon>pandatech.png</PackageIcon>
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <Authors>Pandatech</Authors>
         <Copyright>MIT</Copyright>
-        <Version>2.1.6</Version>
+        <Version>3.0.0</Version>
         <PackageId>Pandatech.GridifyExtensions</PackageId>
         <Title>Pandatech.Gridify.Extensions</Title>
         <PackageTags>Pandatech, library, Gridify, Pagination, Filters</PackageTags>
         <Description>Pandatech.Gridify.Extensions simplifies and extends the functionality of the Gridify NuGet package. It provides additional extension methods and functionality to streamline data filtering and pagination, making it more intuitive and powerful to use in .NET applications. Our enhancements ensure more flexibility, reduce boilerplate code, and improve overall developer productivity when working with Gridify.</Description>
         <RepositoryUrl>https://github.com/PandaTechAM/be-lib-gridify-extensions</RepositoryUrl>
-        <PackageReleaseNotes>ColumnDistinctValue polishing</PackageReleaseNotes>
+        <PackageReleaseNotes>dotnet 10 upgrade</PackageReleaseNotes>
+
+        <!-- Never run analyzers as part of compilation (local, CI, dotnet build/test/publish) -->
+        <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+
+        <!-- Keep background/live analysis in the IDE -->
+        <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
+
+        <!-- Optional: ensure code-style analyzers don't run during build either -->
+        <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\pandatech.png" Pack="true" PackagePath="\" />
-        <None Include="..\..\Readme.md" Pack="true" PackagePath="\" />
+        <None Include="..\..\pandatech.png" Pack="true" PackagePath="\"/>
+        <None Include="..\..\Readme.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Gridify.EntityFramework" Version="2.17.2" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
+        <PackageReference Include="Gridify.EntityFramework" Version="2.17.2"/>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1"/>
+        <PackageReference Include="Pandatech.Analyzers" Version="1.6.0"/>
+        <PackageReference Include="SonarAnalyzer.CSharp" Version="10.17.0.131074">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
 </Project>

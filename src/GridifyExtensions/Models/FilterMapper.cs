@@ -6,8 +6,8 @@ namespace GridifyExtensions.Models;
 
 public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
 {
-   internal const string Desc = " desc";
-   internal const string Separator = ", ";
+   private const string Desc = " desc";
+   private const string Separator = ", ";
    private readonly HashSet<string> _encryptedColumns = [];
 
    private string _defaultOrderExpression = string.Empty;
