@@ -1,41 +1,58 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
         <Nullable>enable</Nullable>
-        <PackageIcon>pandatech.png</PackageIcon>
-        <PackageReadmeFile>Readme.md</PackageReadmeFile>
-        <Authors>Pandatech</Authors>
-        <Copyright>MIT</Copyright>
-        <Version>3.0.1</Version>
+        <ImplicitUsings>enable</ImplicitUsings>
+
+        <IsPackable>true</IsPackable>
+
         <PackageId>Pandatech.GridifyExtensions</PackageId>
-        <Title>Pandatech.Gridify.Extensions</Title>
-        <PackageTags>Pandatech, library, Gridify, Pagination, Filters</PackageTags>
-        <Description>Pandatech.Gridify.Extensions simplifies and extends the functionality of the Gridify NuGet package. It provides additional extension methods and functionality to streamline data filtering and pagination, making it more intuitive and powerful to use in .NET applications. Our enhancements ensure more flexibility, reduce boilerplate code, and improve overall developer productivity when working with Gridify.</Description>
+        <Authors>Pandatech</Authors>
+        <Description>Extensions for Gridify providing streamlined filtering, ordering, pagination, aggregation, and cursor-based queries for Entity Framework Core in .NET 8+. Includes support for encrypted columns, custom converters, dynamic property mapping, and bitwise flag operators. Reduces boilerplate and improves developer productivity.</Description>
+        <PackageTags>gridify;filtering;pagination;ef-core;entity-framework;dynamic-query;cursor-pagination;aggregation;mapping;linq;queryable;aspnetcore</PackageTags>
+
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryType>git</RepositoryType>
         <RepositoryUrl>https://github.com/PandaTechAM/be-lib-gridify-extensions</RepositoryUrl>
-        <PackageReleaseNotes>nuget updates</PackageReleaseNotes>
+        <PackageProjectUrl>https://github.com/PandaTechAM/be-lib-gridify-extensions</PackageProjectUrl>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
 
-        <!-- Never run analyzers as part of compilation (local, CI, dotnet build/test/publish) -->
+        <PackageIcon>pandatech.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+
+        <Version>4.0.0</Version>
+        <PackageReleaseNotes>Multi-target net8.0/9.0/10.0, framework-first dependencies, performance improvements, fixed extension method syntax</PackageReleaseNotes>
+
+        <!-- Build quality -->
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- Source/symbols -->
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+        <!-- Analyzer behavior -->
         <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
-
-        <!-- Keep background/live analysis in the IDE -->
         <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
-
-        <!-- Optional: ensure code-style analyzers don't run during build either -->
         <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\pandatech.png" Pack="true" PackagePath="\"/>
-        <None Include="..\..\Readme.md" Pack="true" PackagePath="\"/>
+        <None Include="..\..\pandatech.png" Pack="true" PackagePath="\" />
+        <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <!-- ASP.NET Core for WebApplicationBuilder extensions -->
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Gridify.EntityFramework" Version="2.17.2"/>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
-        <PackageReference Include="Pandatech.Analyzers" Version="2.0.0" />
-        <PackageReference Include="SonarAnalyzer.CSharp" Version="10.18.0.131500">
+        <PackageReference Include="Gridify.EntityFramework" Version="2.17.2" />
+        <PackageReference Include="Pandatech.Analyzers" Version="[2.1.0]" PrivateAssets="all" />
+        <PackageReference Include="SonarAnalyzer.CSharp" Version="[10.19.0.132793]">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
