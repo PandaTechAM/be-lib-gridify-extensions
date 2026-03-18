@@ -376,8 +376,8 @@ public static class QueryableExtensions
       {
          AggregateType.UniqueCount => await filtered.Distinct()
                                                     .CountAsync(ct),
-         AggregateType.Sum => await filtered.SumAsync(x => (decimal)x!, ct),
-         AggregateType.Average => await filtered.AverageAsync(x => (decimal)x!, ct),
+         AggregateType.Sum => await filtered.SumAsync(x => (double)x!, ct),
+         AggregateType.Average => await filtered.AverageAsync(x => (double)x!, ct),
          AggregateType.Min => await filtered.MinAsync(ct)!,
          AggregateType.Max => await filtered.MaxAsync(ct)!,
          _ => throw new NotImplementedException()
