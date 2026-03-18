@@ -25,6 +25,7 @@ public static class WebApplicationBuilderExtensions
       GridifyGlobalConfiguration.EnableEntityFrameworkCompatibilityLayer();
       GridifyGlobalConfiguration.CaseInsensitiveFiltering = true;
       GridifyGlobalConfiguration.CustomOperators.Register<FlagOperator>();
+      GridifyGlobalConfiguration.CaseSensitiveMapper = false;
 
       QueryableExtensions.EntityGridifyMapperByType =
          assemblies.SelectMany(assembly => assembly
