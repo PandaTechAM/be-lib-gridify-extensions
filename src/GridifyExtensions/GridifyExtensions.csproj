@@ -21,8 +21,8 @@
         <PackageIcon>pandatech.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
 
-        <Version>4.0.1</Version>
-        <PackageReleaseNotes>Changed aggregation in query logic decimal to double</PackageReleaseNotes>
+        <Version>4.0.2</Version>
+        <PackageReleaseNotes>Fixed aggregation rounding</PackageReleaseNotes>
 
         <!-- Build quality -->
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
