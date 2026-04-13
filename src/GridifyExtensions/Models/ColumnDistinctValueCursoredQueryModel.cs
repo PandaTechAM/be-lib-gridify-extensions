@@ -1,4 +1,4 @@
-﻿namespace GridifyExtensions.Models;
+namespace GridifyExtensions.Models;
 
 public class ColumnDistinctValueCursoredQueryModel : GridifyCursoredQueryModel
 {

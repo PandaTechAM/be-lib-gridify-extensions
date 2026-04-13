@@ -50,7 +50,7 @@ public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
 
    public IGridifyMapper<T> AddMap(string from,
       Expression<Func<T, object?>> to,
-      Func<string, object>? convertor = null,
+      Func<string, object>? converter = null,
       bool overrideIfExists = true,
       bool isEncrypted = false)
    {
@@ -59,13 +59,12 @@ public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
          _encryptedColumns.Add(from);
       }
 
-
-      return base.AddMap(from, to, convertor, overrideIfExists);
+      return base.AddMap(from, to, converter, overrideIfExists);
    }
 
    public IGridifyMapper<T> AddMap(string from,
       Expression<Func<T, int, object?>> to,
-      Func<string, object>? convertor = null,
+      Func<string, object>? converter = null,
       bool overrideIfExists = true,
       bool isEncrypted = false)
    {
@@ -74,7 +73,6 @@ public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
          _encryptedColumns.Add(from);
       }
 
-
-      return base.AddMap(from, to, convertor, overrideIfExists);
+      return base.AddMap(from, to, converter, overrideIfExists);
    }
 }

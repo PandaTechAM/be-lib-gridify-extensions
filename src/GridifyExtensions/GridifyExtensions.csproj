@@ -21,8 +21,8 @@
         <PackageIcon>pandatech.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
 
-        <Version>4.0.2</Version>
-        <PackageReleaseNotes>Fixed aggregation rounding</PackageReleaseNotes>
+        <Version>4.1.0</Version>
+        <PackageReleaseNotes>AggregateQueryModel no longer inherits GridifyQueryModel, removing Page/PageSize/OrderBy from OpenAPI spec. Removed obsolete ColumnDistinctValueQueryModel and its ColumnDistinctValuesAsync overload. Renamed convertor to converter in FilterMapper.AddMap. Converted MappingModel to record. Changed mapper store to FrozenDictionary for thread safety.</PackageReleaseNotes>
 
         <!-- Build quality -->
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
@@ -50,7 +50,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Gridify.EntityFramework" Version="2.17.2" />
+        <PackageReference Include="Gridify.EntityFramework" Version="2.19.0" />
         <PackageReference Include="Pandatech.Analyzers" Version="[2.1.0]" PrivateAssets="all" />
         <PackageReference Include="SonarAnalyzer.CSharp" Version="[10.19.0.132793]">
             <PrivateAssets>all</PrivateAssets>
