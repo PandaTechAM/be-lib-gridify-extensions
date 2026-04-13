@@ -1,4 +1,5 @@
-﻿using System.Collections;
+using System.Collections;
+using System.Collections.Frozen;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using Gridify;
@@ -15,7 +16,7 @@ namespace GridifyExtensions.Extensions;
 /// </summary>
 public static class QueryableExtensions
 {
-   internal static Dictionary<Type, object> EntityGridifyMapperByType = [];
+   internal static FrozenDictionary<Type, object> EntityGridifyMapperByType = FrozenDictionary<Type, object>.Empty;
 
    // ---------- Core helpers ----------
    private static FilterMapper<TEntity> RequireMapper<TEntity>()
@@ -173,85 +174,6 @@ public static class QueryableExtensions
    }
 
    /// <summary>
-   /// Get distinct values for a column (obsolete - use cursored version).
-   /// </summary>
-   [Obsolete("Use ColumnDistinctValueCursoredQueryModel instead.")]
-   public static async Task<PagedResponse<object>> ColumnDistinctValuesAsync<TEntity>(this IQueryable<TEntity> query,
-      ColumnDistinctValueQueryModel model,
-      Func<byte[], string>? decryptor = null,
-      CancellationToken ct = default)
-      where TEntity : class
-   {
-      var mapper = RequireMapper<TEntity>();
-
-      if (!mapper.IsEncrypted(model.PropertyName))
-      {
-         var result = await query
-                            .ApplyFiltering(model, mapper)
-                            .ApplySelect(model.PropertyName, mapper)
-                            .Distinct()
-                            .OrderBy(x => x)
-                            .GetPagedAsync(model, ct);
-         return result;
-      }
-
-      var encryptedQuery = query
-                           .ApplyFiltering(model, mapper)
-                           .ApplySelect(model.PropertyName, mapper);
-
-      if (string.IsNullOrWhiteSpace(model.Filter))
-      {
-         bool hasNullLike;
-         try
-         {
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-            hasNullLike = await encryptedQuery.AnyAsync(x => x == null, ct);
-         }
-         catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-         {
-            hasNullLike = true;
-         }
-
-         return hasNullLike ? new PagedResponse<object>([null!], 1, 1, 1) : new PagedResponse<object>([], 1, 1, 0);
-      }
-
-      var selected = await encryptedQuery.FirstOrDefaultAsync(ct);
-      switch (selected)
-      {
-         case null:
-         case byte[] { Length: 0 }:
-            return new PagedResponse<object>([null!], 1, 1, 1);
-         case byte[] sb:
-            return decryptor == null
-               ? throw new KeyNotFoundException("Decryptor is required for encrypted properties.")
-               : new PagedResponse<object>([decryptor(sb)], 1, 1, 1);
-      }
-
-      if (selected is not IEnumerable<byte[]> seq)
-      {
-         throw new InvalidCastException("Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.");
-      }
-
-      var ng = ((IEnumerable)seq).GetEnumerator();
-      using var ng1 = ng as IDisposable;
-
-      if (!ng.MoveNext())
-      {
-         return new PagedResponse<object>([null!], 1, 1, 1);
-      }
-
-      var firstObj = ng.Current;
-      if (firstObj is not byte[] first || first.Length == 0)
-      {
-         return new PagedResponse<object>([null!], 1, 1, 1);
-      }
-
-      return decryptor == null
-         ? throw new KeyNotFoundException("Decryptor is required for encrypted properties.")
-         : new PagedResponse<object>([decryptor(first)], 1, 1, 1);
-   }
-
-   /// <summary>
    /// Get distinct values for a column with cursor pagination.
    /// </summary>
    public static async Task<CursoredResponse<object?>> ColumnDistinctValuesAsync<TEntity>(
@@ -290,7 +212,7 @@ public static class QueryableExtensions
                              .ToListAsync(ct);
 
             return new CursoredResponse<object?>(data.Cast<object?>()
-                                                     .ToList(),
+                                                      .ToList(),
                model.PageSize);
          }
 
@@ -369,7 +291,7 @@ public static class QueryableExtensions
       where TEntity : class
    {
       var mapper = RequireMapper<TEntity>();
-      var filtered = query.ApplyFiltering(model, mapper)
+      var filtered = query.ApplyFiltering(model.ToGridifyQueryModel(), mapper)
                           .ApplySelect(model.PropertyName, mapper);
 
       return model.AggregateType switch
@@ -392,18 +314,18 @@ public static class QueryableExtensions
       var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
       return mapper!.GetCurrentMaps()
-                    .Select(x => new MappingModel
-                    {
-                       Name = x.From,
-                       Type = x.To.Body switch
+                    .Select(x => new MappingModel(
+                       x.From,
+                       x.To.Body switch
                        {
                           UnaryExpression ue => ue.Operand.Type.Name,
                           MethodCallExpression mc => (mc.Arguments.LastOrDefault() as LambdaExpression)?.ReturnType.Name
                                                      ?? x.To.Body.Type.Name,
                           _ => x.To.Body.Type.Name
-                       }
-                    });
+                       }));
    }
+
+   // ---------- Private helpers ----------
 
    private static Expression<Func<TEntity, string?>> EfStringSelector<TEntity>(string propertyName)
       where TEntity : class

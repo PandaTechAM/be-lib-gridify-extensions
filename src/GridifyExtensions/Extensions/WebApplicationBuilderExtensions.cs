@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+using System.Collections.Frozen;
+using System.Reflection;
 using Gridify;
 using GridifyExtensions.Models;
 using GridifyExtensions.Operators;
@@ -39,6 +40,6 @@ public static class WebApplicationBuilderExtensions
                                            .Select(x =>
                                               new KeyValuePair<Type, object>(x.BaseType!.GetGenericArguments()[0],
                                                  Activator.CreateInstance(x)!)))
-                   .ToDictionary(x => x.Key, x => x.Value);
+                   .ToFrozenDictionary(x => x.Key, x => x.Value);
    }
 }
