@@ -21,8 +21,8 @@
         <PackageIcon>pandatech.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
 
-        <Version>4.1.0</Version>
-        <PackageReleaseNotes>AggregateQueryModel no longer inherits GridifyQueryModel, removing Page/PageSize/OrderBy from OpenAPI spec. Removed obsolete ColumnDistinctValueQueryModel and its ColumnDistinctValuesAsync overload. Renamed convertor to converter in FilterMapper.AddMap. Converted MappingModel to record. Changed mapper store to FrozenDictionary for thread safety.</PackageReleaseNotes>
+        <Version>4.1.1</Version>
+        <PackageReleaseNotes>Improved Gridify filtering performance.</PackageReleaseNotes>
 
         <!-- Build quality -->
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>

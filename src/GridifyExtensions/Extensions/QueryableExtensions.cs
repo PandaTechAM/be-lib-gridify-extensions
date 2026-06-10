@@ -1,9 +1,10 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Frozen;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using Gridify;
 using GridifyExtensions.Enums;
+using GridifyExtensions.Exceptions;
 using GridifyExtensions.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -110,19 +111,29 @@ public static class QueryableExtensions
       CancellationToken ct = default)
       where TEntity : class
    {
-      var mapper = RequireMapper<TEntity>();
-      model.OrderBy ??= mapper.GetDefaultOrderExpression();
+      try
+      {
+         var mapper = RequireMapper<TEntity>();
+         model.OrderBy ??= mapper.GetDefaultOrderExpression();
 
-      var filtered = query.ApplyFiltering(model, mapper);
-      var totalCount = await filtered.CountAsync(ct);
-      var ordered = filtered.ApplyOrdering(model, mapper);
+         var filtered = query.ApplyFiltering(model, mapper);
+         var totalCount = await filtered.CountAsync(ct);
+         var ordered = filtered.ApplyOrdering(model, mapper);
 
-      var data = await ordered
-                       .Select(selectExpression)
-                       .ApplyPaging(model.Page, model.PageSize)
-                       .ToListAsync(ct);
+         var data = await ordered
+                          .Select(selectExpression)
+                          .ApplyPaging(model.Page, model.PageSize)
+                          .ToListAsync(ct);
 
-      return new PagedResponse<TDto>(data, model.Page, model.PageSize, totalCount);
+         return new PagedResponse<TDto>(data, model.Page, model.PageSize, totalCount);
+      }
+      catch (Exception ex) when (
+        ex is GridifyFilteringException ||
+        ex is FormatException ||
+        ex is ArgumentException)
+      {
+         throw new GridifyException($"Error applying filtering, ordering, and pagination: {ex.Message}");
+      }
    }
 
    /// <summary>
@@ -147,18 +158,28 @@ public static class QueryableExtensions
       CancellationToken ct = default)
       where TEntity : class
    {
-      var mapper = RequireMapper<TEntity>();
+      try
+      {
+         var mapper = RequireMapper<TEntity>();
 
-      var queryModel = model.ToGridifyQueryModel();
-      queryModel.OrderBy ??= mapper.GetDefaultOrderExpression();
+         var queryModel = model.ToGridifyQueryModel();
+         queryModel.OrderBy ??= mapper.GetDefaultOrderExpression();
 
-      query = query.ApplyFilteringAndOrdering(queryModel, mapper);
+         query = query.ApplyFilteringAndOrdering(queryModel, mapper);
 
-      var data = await query.Select(selectExpression)
-                            .Take(model.PageSize)
-                            .ToListAsync(ct);
+         var data = await query.Select(selectExpression)
+                               .Take(model.PageSize)
+                               .ToListAsync(ct);
 
-      return new CursoredResponse<TDto>(data, model.PageSize);
+         return new CursoredResponse<TDto>(data, model.PageSize);
+      }
+      catch (Exception ex) when (
+        ex is GridifyFilteringException ||
+        ex is FormatException ||
+        ex is ArgumentException)
+      {
+         throw new GridifyException($"Error applying filtering, ordering, and pagination: {ex.Message}");
+      }
    }
 
    /// <summary>
@@ -183,103 +204,113 @@ public static class QueryableExtensions
       CancellationToken ct = default)
       where TEntity : class
    {
-      var mapper = RequireMapper<TEntity>();
-      var gridifyModel = model.ToGridifyQueryModel();
-
-      if (!mapper.IsEncrypted(model.PropertyName))
+      try
       {
-         var selectedNonEncrypted = query
-                                    .ApplyFiltering(gridifyModel, mapper)
-                                    .ApplySelect(model.PropertyName, mapper)
-                                    .Distinct();
+         var mapper = RequireMapper<TEntity>();
+         var gridifyModel = model.ToGridifyQueryModel();
 
-         var term = ExtractStarContainsTerm(model.Filter, model.PropertyName);
-         if (!string.IsNullOrEmpty(term) && IsStringColumn(query, mapper, model.PropertyName))
+         if (!mapper.IsEncrypted(model.PropertyName))
          {
-            var termLower = term.ToLower();
+            var selectedNonEncrypted = query
+                                       .ApplyFiltering(gridifyModel, mapper)
+                                       .ApplySelect(model.PropertyName, mapper)
+                                       .Distinct();
 
-            var projected = query
-                            .ApplyFiltering(gridifyModel, mapper)
-                            .Select(StringSelector(query, mapper, model.PropertyName))
-                            .Distinct();
+            var term = ExtractStarContainsTerm(model.Filter, model.PropertyName);
+            if (!string.IsNullOrEmpty(term) && IsStringColumn(query, mapper, model.PropertyName))
+            {
+               var termLower = term.ToLower();
 
-            var data = await projected
-                             .OrderBy(x => x == null ? 0 : 1)
-                             .ThenBy(x => x != null && x.ToLower() == termLower ? 0 : 1)
-                             .ThenBy(x => x == null ? int.MaxValue : x.Length)
-                             .ThenBy(x => x)
-                             .Take(model.PageSize)
-                             .ToListAsync(ct);
+               var projected = query
+                               .ApplyFiltering(gridifyModel, mapper)
+                               .Select(StringSelector(query, mapper, model.PropertyName))
+                               .Distinct();
 
-            return new CursoredResponse<object?>(data.Cast<object?>()
-                                                      .ToList(),
-               model.PageSize);
+               var data = await projected
+                                .OrderBy(x => x == null ? 0 : 1)
+                                .ThenBy(x => x != null && x.ToLower() == termLower ? 0 : 1)
+                                .ThenBy(x => x == null ? int.MaxValue : x.Length)
+                                .ThenBy(x => x)
+                                .Take(model.PageSize)
+                                .ToListAsync(ct);
+
+               return new CursoredResponse<object?>(data.Cast<object?>()
+                                                         .ToList(),
+                  model.PageSize);
+            }
+
+            var data2 = await selectedNonEncrypted
+                              .OrderBy(x => (object?)x == null ? 0 : 1)
+                              .Take(model.PageSize)
+                              .ToListAsync(ct);
+
+            return new CursoredResponse<object?>(data2!, model.PageSize);
          }
 
-         var data2 = await selectedNonEncrypted
-                           .OrderBy(x => (object?)x == null ? 0 : 1)
-                           .Take(model.PageSize)
-                           .ToListAsync(ct);
+         // Encrypted path
+         var encryptedQuery = query
+                              .ApplyFiltering(gridifyModel, mapper)
+                              .ApplySelect(model.PropertyName, mapper);
 
-         return new CursoredResponse<object?>(data2!, model.PageSize);
-      }
-
-      // Encrypted path
-      var encryptedQuery = query
-                           .ApplyFiltering(gridifyModel, mapper)
-                           .ApplySelect(model.PropertyName, mapper);
-
-      if (string.IsNullOrWhiteSpace(model.Filter))
-      {
-         bool hasNullLike;
-         try
+         if (string.IsNullOrWhiteSpace(model.Filter))
          {
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-            hasNullLike = await encryptedQuery.AnyAsync(x => x == null, ct);
-         }
-         catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-         {
-            hasNullLike = true;
+            bool hasNullLike;
+            try
+            {
+               // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+               hasNullLike = await encryptedQuery.AnyAsync(x => x == null, ct);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+            {
+               hasNullLike = true;
+            }
+
+            return hasNullLike
+               ? new CursoredResponse<object?>([null], model.PageSize)
+               : new CursoredResponse<object?>([], model.PageSize);
          }
 
-         return hasNullLike
-            ? new CursoredResponse<object?>([null], model.PageSize)
-            : new CursoredResponse<object?>([], model.PageSize);
-      }
+         var selected = await encryptedQuery.FirstOrDefaultAsync(ct);
+         switch (selected)
+         {
+            case null:
+            case byte[] { Length: 0 }:
+               return new CursoredResponse<object?>([null], model.PageSize);
+            case byte[] when decryptor == null:
+               throw new KeyNotFoundException("Decryptor is required for encrypted properties.");
+            case byte[] sb:
+               return new CursoredResponse<object?>([decryptor(sb)], model.PageSize);
+         }
 
-      var selected = await encryptedQuery.FirstOrDefaultAsync(ct);
-      switch (selected)
-      {
-         case null:
-         case byte[] { Length: 0 }:
+         if (selected is not IEnumerable<byte[]> seq)
+         {
+            throw new InvalidCastException("Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.");
+         }
+
+         var ng = ((IEnumerable)seq).GetEnumerator();
+         using var ng1 = ng as IDisposable;
+         if (!ng.MoveNext())
+         {
             return new CursoredResponse<object?>([null], model.PageSize);
-         case byte[] when decryptor == null:
-            throw new KeyNotFoundException("Decryptor is required for encrypted properties.");
-         case byte[] sb:
-            return new CursoredResponse<object?>([decryptor(sb)], model.PageSize);
-      }
+         }
 
-      if (selected is not IEnumerable<byte[]> seq)
+         var firstObj = ng.Current;
+         if (firstObj is not byte[] first || first.Length == 0)
+         {
+            return new CursoredResponse<object?>([null], model.PageSize);
+         }
+
+         return decryptor == null
+            ? throw new KeyNotFoundException("Decryptor is required for encrypted properties.")
+            : new CursoredResponse<object?>([decryptor(first)], model.PageSize);
+      }
+      catch (Exception ex) when (
+        ex is GridifyFilteringException ||
+        ex is FormatException ||
+        ex is ArgumentException)
       {
-         throw new InvalidCastException("Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.");
+         throw new GridifyException($"Error applying filtering and getting distinct values: {ex.Message}");
       }
-
-      var ng = ((IEnumerable)seq).GetEnumerator();
-      using var ng1 = ng as IDisposable;
-      if (!ng.MoveNext())
-      {
-         return new CursoredResponse<object?>([null], model.PageSize);
-      }
-
-      var firstObj = ng.Current;
-      if (firstObj is not byte[] first || first.Length == 0)
-      {
-         return new CursoredResponse<object?>([null], model.PageSize);
-      }
-
-      return decryptor == null
-         ? throw new KeyNotFoundException("Decryptor is required for encrypted properties.")
-         : new CursoredResponse<object?>([decryptor(first)], model.PageSize);
    }
 
    /// <summary>
