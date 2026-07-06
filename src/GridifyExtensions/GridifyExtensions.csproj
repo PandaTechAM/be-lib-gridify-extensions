@@ -1,61 +1,61 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
-        <Nullable>enable</Nullable>
-        <ImplicitUsings>enable</ImplicitUsings>
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
 
-        <IsPackable>true</IsPackable>
+    <IsPackable>true</IsPackable>
 
-        <PackageId>Pandatech.GridifyExtensions</PackageId>
-        <Authors>Pandatech</Authors>
-        <Description>Extensions for Gridify providing streamlined filtering, ordering, pagination, aggregation, and cursor-based queries for Entity Framework Core in .NET 8+. Includes support for encrypted columns, custom converters, dynamic property mapping, and bitwise flag operators. Reduces boilerplate and improves developer productivity.</Description>
-        <PackageTags>gridify;filtering;pagination;ef-core;entity-framework;dynamic-query;cursor-pagination;aggregation;mapping;linq;queryable;aspnetcore</PackageTags>
+    <PackageId>Pandatech.GridifyExtensions</PackageId>
+    <Authors>Pandatech</Authors>
+    <Description>Extensions for Gridify providing streamlined filtering, ordering, pagination, aggregation, and cursor-based queries for Entity Framework Core in .NET 8+. Includes support for encrypted columns, custom converters, dynamic property mapping, and bitwise flag operators. Reduces boilerplate and improves developer productivity.</Description>
+    <PackageTags>gridify;filtering;pagination;ef-core;entity-framework;dynamic-query;cursor-pagination;aggregation;mapping;linq;queryable;aspnetcore</PackageTags>
 
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <RepositoryType>git</RepositoryType>
-        <RepositoryUrl>https://github.com/PandaTechAM/be-lib-gridify-extensions</RepositoryUrl>
-        <PackageProjectUrl>https://github.com/PandaTechAM/be-lib-gridify-extensions</PackageProjectUrl>
-        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/PandaTechAM/be-lib-gridify-extensions</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/PandaTechAM/be-lib-gridify-extensions</PackageProjectUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
 
-        <PackageIcon>pandatech.png</PackageIcon>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>pandatech.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
 
-        <Version>4.1.2</Version>
-        <PackageReleaseNotes>ToUtcDateTime no longer throws FormatException on an empty/whitespace value (open range bound such as "CreatedAt>="); it now returns UTC DateTime.MinValue, matching the built-in DateTime converter, so an empty bound is a no-op instead of surfacing as a 500.</PackageReleaseNotes>
+    <Version>4.1.3</Version>
+    <PackageReleaseNotes>Tooling modernization: xUnit v3 test migration, dependency updates, XML documentation on public APIs, and standardized editorconfig/gitignore/global.json.</PackageReleaseNotes>
 
-        <!-- Build quality -->
-        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Build quality -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-        <!-- Source/symbols -->
-        <IncludeSymbols>true</IncludeSymbols>
-        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-        <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <!-- Source/symbols -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
 
-        <!-- Analyzer behavior -->
-        <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
-        <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
-        <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
-    </PropertyGroup>
+    <!-- Analyzer behavior -->
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <None Include="..\..\pandatech.png" Pack="true" PackagePath="\" />
-        <None Include="..\..\README.md" Pack="true" PackagePath="\" />
-    </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\pandatech.png" Pack="true" PackagePath="\"/>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
+  </ItemGroup>
 
-    <!-- ASP.NET Core for WebApplicationBuilder extensions -->
-    <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    </ItemGroup>
+  <!-- ASP.NET Core for WebApplicationBuilder extensions -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+  </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Gridify.EntityFramework" Version="2.19.0" />
-        <PackageReference Include="Pandatech.Analyzers" Version="[2.1.0]" PrivateAssets="all" />
-        <PackageReference Include="SonarAnalyzer.CSharp" Version="[10.19.0.132793]">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-    </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Gridify.EntityFramework" Version="2.19.1"/>
+    <PackageReference Include="Pandatech.Analyzers" Version="[2.1.0]" PrivateAssets="all"/>
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="[10.19.0.132793]">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
 
 </Project>

@@ -13,443 +13,445 @@ using Microsoft.Extensions.DependencyInjection;
 namespace GridifyExtensions.Extensions;
 
 /// <summary>
-/// Extension methods for IQueryable to support Gridify filtering, ordering, pagination, and aggregation.
+///     Extension methods for IQueryable to support Gridify filtering, ordering, pagination, and aggregation.
 /// </summary>
 public static class QueryableExtensions
 {
-   internal static FrozenDictionary<Type, object> EntityGridifyMapperByType = FrozenDictionary<Type, object>.Empty;
+    internal static FrozenDictionary<Type, object> EntityGridifyMapperByType = FrozenDictionary<Type, object>.Empty;
 
-   // ---------- Core helpers ----------
-   private static FilterMapper<TEntity> RequireMapper<TEntity>()
-      where TEntity : class
-   {
-      if (!EntityGridifyMapperByType.TryGetValue(typeof(TEntity), out var raw) ||
-          raw is not FilterMapper<TEntity> mapper)
-      {
-         throw new KeyNotFoundException($"No FilterMapper registered for entity type {typeof(TEntity).Name}.");
-      }
+    // ---------- Core helpers ----------
+    private static FilterMapper<TEntity> RequireMapper<TEntity>()
+        where TEntity : class
+    {
+        if (!EntityGridifyMapperByType.TryGetValue(typeof(TEntity), out var raw) ||
+            raw is not FilterMapper<TEntity> mapper)
+        {
+            throw new KeyNotFoundException($"No FilterMapper registered for entity type {typeof(TEntity).Name}.");
+        }
 
-      return mapper;
-   }
+        return mapper;
+    }
 
-   // ---------- Filtering / Ordering ----------
+    // ---------- Filtering / Ordering ----------
 
-   /// <summary>
-   /// Apply filtering from a GridifyQueryModel.
-   /// </summary>
-   public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
-      where TEntity : class
-   {
-      return query.ApplyFiltering(model, RequireMapper<TEntity>());
-   }
+    /// <summary>
+    ///     Apply filtering from a GridifyQueryModel.
+    /// </summary>
+    public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
+        where TEntity : class
+    {
+        return query.ApplyFiltering(model, RequireMapper<TEntity>());
+    }
 
-   /// <summary>
-   /// Apply filtering from a filter string.
-   /// </summary>
-   public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, string filter)
-      where TEntity : class
-   {
-      var model = new GridifyQueryModel
-      {
-         Page = 1,
-         PageSize = 1,
-         OrderBy = null,
-         Filter = filter
-      };
-      return query.ApplyFiltering(model, RequireMapper<TEntity>());
-   }
+    /// <summary>
+    ///     Apply filtering from a filter string.
+    /// </summary>
+    public static IQueryable<TEntity> ApplyFilter<TEntity>(this IQueryable<TEntity> query, string filter)
+        where TEntity : class
+    {
+        var model = new GridifyQueryModel
+        {
+            Page = 1,
+            PageSize = 1,
+            OrderBy = null,
+            Filter = filter
+        };
+        return query.ApplyFiltering(model, RequireMapper<TEntity>());
+    }
 
-   /// <summary>
-   /// Apply ordering from a GridifyQueryModel.
-   /// </summary>
-   public static IQueryable<TEntity> ApplyOrder<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
-      where TEntity : class
-   {
-      var mapper = RequireMapper<TEntity>();
-      model.OrderBy ??= mapper.GetDefaultOrderExpression();
-      return query.AsNoTracking()
-                  .ApplyOrdering(model, mapper);
-   }
+    /// <summary>
+    ///     Apply ordering from a GridifyQueryModel.
+    /// </summary>
+    public static IQueryable<TEntity> ApplyOrder<TEntity>(this IQueryable<TEntity> query, GridifyQueryModel model)
+        where TEntity : class
+    {
+        var mapper = RequireMapper<TEntity>();
+        model.OrderBy ??= mapper.GetDefaultOrderExpression();
+        return query.AsNoTracking()
+            .ApplyOrdering(model, mapper);
+    }
 
-   /// <summary>
-   /// Get paged results with total count.
-   /// </summary>
-   public static async Task<PagedResponse<TEntity>> GetPagedAsync<TEntity>(this IQueryable<TEntity> query,
-      GridifyQueryModel model,
-      CancellationToken ct = default)
-      where TEntity : class
-   {
-      var totalCount = await query.CountAsync(ct);
-      query = query.ApplyPaging(model.Page, model.PageSize);
-      var data = await query.ToListAsync(ct);
-      return new PagedResponse<TEntity>(data, model.Page, model.PageSize, totalCount);
-   }
+    /// <summary>
+    ///     Get paged results with total count.
+    /// </summary>
+    public static async Task<PagedResponse<TEntity>> GetPagedAsync<TEntity>(this IQueryable<TEntity> query,
+        GridifyQueryModel model,
+        CancellationToken ct = default)
+        where TEntity : class
+    {
+        var totalCount = await query.CountAsync(ct);
+        query = query.ApplyPaging(model.Page, model.PageSize);
+        var data = await query.ToListAsync(ct);
+        return new PagedResponse<TEntity>(data, model.Page, model.PageSize, totalCount);
+    }
 
-   /// <summary>
-   /// Get paged results with projection and total count.
-   /// </summary>
-   public static async Task<PagedResponse<TDto>> GetPagedAsync<TEntity, TDto>(this IQueryable<TEntity> query,
-      GridifyQueryModel model,
-      Expression<Func<TEntity, TDto>> selectExpression,
-      CancellationToken ct = default)
-      where TEntity : class
-   {
-      var totalCount = await query.CountAsync(ct);
-      var data = await query.Select(selectExpression)
-                            .ApplyPaging(model.Page, model.PageSize)
-                            .ToListAsync(ct);
-      return new PagedResponse<TDto>(data, model.Page, model.PageSize, totalCount);
-   }
+    /// <summary>
+    ///     Get paged results with projection and total count.
+    /// </summary>
+    public static async Task<PagedResponse<TDto>> GetPagedAsync<TEntity, TDto>(this IQueryable<TEntity> query,
+        GridifyQueryModel model,
+        Expression<Func<TEntity, TDto>> selectExpression,
+        CancellationToken ct = default)
+        where TEntity : class
+    {
+        var totalCount = await query.CountAsync(ct);
+        var data = await query.Select(selectExpression)
+            .ApplyPaging(model.Page, model.PageSize)
+            .ToListAsync(ct);
+        return new PagedResponse<TDto>(data, model.Page, model.PageSize, totalCount);
+    }
 
-   /// <summary>
-   /// Apply filtering, ordering, and pagination with projection.
-   /// </summary>
-   public static async Task<PagedResponse<TDto>> FilterOrderAndGetPagedAsync<TEntity, TDto>(
-      this IQueryable<TEntity> query,
-      GridifyQueryModel model,
-      Expression<Func<TEntity, TDto>> selectExpression,
-      CancellationToken ct = default)
-      where TEntity : class
-   {
-      try
-      {
-         var mapper = RequireMapper<TEntity>();
-         model.OrderBy ??= mapper.GetDefaultOrderExpression();
+    /// <summary>
+    ///     Apply filtering, ordering, and pagination with projection.
+    /// </summary>
+    public static async Task<PagedResponse<TDto>> FilterOrderAndGetPagedAsync<TEntity, TDto>(
+        this IQueryable<TEntity> query,
+        GridifyQueryModel model,
+        Expression<Func<TEntity, TDto>> selectExpression,
+        CancellationToken ct = default)
+        where TEntity : class
+    {
+        try
+        {
+            var mapper = RequireMapper<TEntity>();
+            model.OrderBy ??= mapper.GetDefaultOrderExpression();
 
-         var filtered = query.ApplyFiltering(model, mapper);
-         var totalCount = await filtered.CountAsync(ct);
-         var ordered = filtered.ApplyOrdering(model, mapper);
+            var filtered = query.ApplyFiltering(model, mapper);
+            var totalCount = await filtered.CountAsync(ct);
+            var ordered = filtered.ApplyOrdering(model, mapper);
 
-         var data = await ordered
-                          .Select(selectExpression)
-                          .ApplyPaging(model.Page, model.PageSize)
-                          .ToListAsync(ct);
+            var data = await ordered
+                .Select(selectExpression)
+                .ApplyPaging(model.Page, model.PageSize)
+                .ToListAsync(ct);
 
-         return new PagedResponse<TDto>(data, model.Page, model.PageSize, totalCount);
-      }
-      catch (Exception ex) when (
-        ex is GridifyFilteringException ||
-        ex is FormatException ||
-        ex is ArgumentException)
-      {
-         throw new GridifyException($"Error applying filtering, ordering, and pagination: {ex.Message}");
-      }
-   }
+            return new PagedResponse<TDto>(data, model.Page, model.PageSize, totalCount);
+        }
+        catch (Exception ex) when (
+            ex is GridifyFilteringException ||
+            ex is FormatException ||
+            ex is ArgumentException)
+        {
+            throw new GridifyException($"Error applying filtering, ordering, and pagination: {ex.Message}");
+        }
+    }
 
-   /// <summary>
-   /// Apply filtering, ordering, and pagination without projection.
-   /// </summary>
-   public static Task<PagedResponse<TEntity>> FilterOrderAndGetPagedAsync<TEntity>(this IQueryable<TEntity> query,
-      GridifyQueryModel model,
-      CancellationToken ct = default)
-      where TEntity : class
-   {
-      return query.AsNoTracking()
-                  .FilterOrderAndGetPagedAsync(model, x => x, ct);
-   }
+    /// <summary>
+    ///     Apply filtering, ordering, and pagination without projection.
+    /// </summary>
+    public static Task<PagedResponse<TEntity>> FilterOrderAndGetPagedAsync<TEntity>(this IQueryable<TEntity> query,
+        GridifyQueryModel model,
+        CancellationToken ct = default)
+        where TEntity : class
+    {
+        return query.AsNoTracking()
+            .FilterOrderAndGetPagedAsync(model, x => x, ct);
+    }
 
-   /// <summary>
-   /// Apply filtering, ordering, and cursor-based pagination with projection.
-   /// </summary>
-   public static async Task<CursoredResponse<TDto>> FilterOrderAndGetCursoredAsync<TEntity, TDto>(
-      this IQueryable<TEntity> query,
-      GridifyCursoredQueryModel model,
-      Expression<Func<TEntity, TDto>> selectExpression,
-      CancellationToken ct = default)
-      where TEntity : class
-   {
-      try
-      {
-         var mapper = RequireMapper<TEntity>();
+    /// <summary>
+    ///     Apply filtering, ordering, and cursor-based pagination with projection.
+    /// </summary>
+    public static async Task<CursoredResponse<TDto>> FilterOrderAndGetCursoredAsync<TEntity, TDto>(
+        this IQueryable<TEntity> query,
+        GridifyCursoredQueryModel model,
+        Expression<Func<TEntity, TDto>> selectExpression,
+        CancellationToken ct = default)
+        where TEntity : class
+    {
+        try
+        {
+            var mapper = RequireMapper<TEntity>();
 
-         var queryModel = model.ToGridifyQueryModel();
-         queryModel.OrderBy ??= mapper.GetDefaultOrderExpression();
+            var queryModel = model.ToGridifyQueryModel();
+            queryModel.OrderBy ??= mapper.GetDefaultOrderExpression();
 
-         query = query.ApplyFilteringAndOrdering(queryModel, mapper);
+            query = query.ApplyFilteringAndOrdering(queryModel, mapper);
 
-         var data = await query.Select(selectExpression)
-                               .Take(model.PageSize)
-                               .ToListAsync(ct);
+            var data = await query.Select(selectExpression)
+                .Take(model.PageSize)
+                .ToListAsync(ct);
 
-         return new CursoredResponse<TDto>(data, model.PageSize);
-      }
-      catch (Exception ex) when (
-        ex is GridifyFilteringException ||
-        ex is FormatException ||
-        ex is ArgumentException)
-      {
-         throw new GridifyException($"Error applying filtering, ordering, and pagination: {ex.Message}");
-      }
-   }
+            return new CursoredResponse<TDto>(data, model.PageSize);
+        }
+        catch (Exception ex) when (
+            ex is GridifyFilteringException ||
+            ex is FormatException ||
+            ex is ArgumentException)
+        {
+            throw new GridifyException($"Error applying filtering, ordering, and pagination: {ex.Message}");
+        }
+    }
 
-   /// <summary>
-   /// Apply filtering, ordering, and cursor-based pagination without projection.
-   /// </summary>
-   public static Task<CursoredResponse<TEntity>> FilterOrderAndGetCursoredAsync<TEntity>(this IQueryable<TEntity> query,
-      GridifyCursoredQueryModel model,
-      CancellationToken ct = default)
-      where TEntity : class
-   {
-      return query.AsNoTracking()
-                  .FilterOrderAndGetCursoredAsync(model, x => x, ct);
-   }
+    /// <summary>
+    ///     Apply filtering, ordering, and cursor-based pagination without projection.
+    /// </summary>
+    public static Task<CursoredResponse<TEntity>> FilterOrderAndGetCursoredAsync<TEntity>(
+        this IQueryable<TEntity> query,
+        GridifyCursoredQueryModel model,
+        CancellationToken ct = default)
+        where TEntity : class
+    {
+        return query.AsNoTracking()
+            .FilterOrderAndGetCursoredAsync(model, x => x, ct);
+    }
 
-   /// <summary>
-   /// Get distinct values for a column with cursor pagination.
-   /// </summary>
-   public static async Task<CursoredResponse<object?>> ColumnDistinctValuesAsync<TEntity>(
-      this IQueryable<TEntity> query,
-      ColumnDistinctValueCursoredQueryModel model,
-      Func<byte[], string>? decryptor = null,
-      CancellationToken ct = default)
-      where TEntity : class
-   {
-      try
-      {
-         var mapper = RequireMapper<TEntity>();
-         var gridifyModel = model.ToGridifyQueryModel();
+    /// <summary>
+    ///     Get distinct values for a column with cursor pagination.
+    /// </summary>
+    public static async Task<CursoredResponse<object?>> ColumnDistinctValuesAsync<TEntity>(
+        this IQueryable<TEntity> query,
+        ColumnDistinctValueCursoredQueryModel model,
+        Func<byte[], string>? decryptor = null,
+        CancellationToken ct = default)
+        where TEntity : class
+    {
+        try
+        {
+            var mapper = RequireMapper<TEntity>();
+            var gridifyModel = model.ToGridifyQueryModel();
 
-         if (!mapper.IsEncrypted(model.PropertyName))
-         {
-            var selectedNonEncrypted = query
-                                       .ApplyFiltering(gridifyModel, mapper)
-                                       .ApplySelect(model.PropertyName, mapper)
-                                       .Distinct();
-
-            var term = ExtractStarContainsTerm(model.Filter, model.PropertyName);
-            if (!string.IsNullOrEmpty(term) && IsStringColumn(query, mapper, model.PropertyName))
+            if (!mapper.IsEncrypted(model.PropertyName))
             {
-               var termLower = term.ToLower();
+                var selectedNonEncrypted = query
+                    .ApplyFiltering(gridifyModel, mapper)
+                    .ApplySelect(model.PropertyName, mapper)
+                    .Distinct();
 
-               var projected = query
-                               .ApplyFiltering(gridifyModel, mapper)
-                               .Select(StringSelector(query, mapper, model.PropertyName))
-                               .Distinct();
+                var term = ExtractStarContainsTerm(model.Filter, model.PropertyName);
+                if (!string.IsNullOrEmpty(term) && IsStringColumn(query, mapper, model.PropertyName))
+                {
+                    var termLower = term.ToLower();
 
-               var data = await projected
-                                .OrderBy(x => x == null ? 0 : 1)
-                                .ThenBy(x => x != null && x.ToLower() == termLower ? 0 : 1)
-                                .ThenBy(x => x == null ? int.MaxValue : x.Length)
-                                .ThenBy(x => x)
-                                .Take(model.PageSize)
-                                .ToListAsync(ct);
+                    var projected = query
+                        .ApplyFiltering(gridifyModel, mapper)
+                        .Select(StringSelector(query, mapper, model.PropertyName))
+                        .Distinct();
 
-               return new CursoredResponse<object?>(data.Cast<object?>()
-                                                         .ToList(),
-                  model.PageSize);
+                    var data = await projected
+                        .OrderBy(x => x == null ? 0 : 1)
+                        .ThenBy(x => x != null && x.ToLower() == termLower ? 0 : 1)
+                        .ThenBy(x => x == null ? int.MaxValue : x.Length)
+                        .ThenBy(x => x)
+                        .Take(model.PageSize)
+                        .ToListAsync(ct);
+
+                    return new CursoredResponse<object?>(data.Cast<object?>()
+                            .ToList(),
+                        model.PageSize);
+                }
+
+                var data2 = await selectedNonEncrypted
+                    .OrderBy(x => (object?)x == null ? 0 : 1)
+                    .Take(model.PageSize)
+                    .ToListAsync(ct);
+
+                return new CursoredResponse<object?>(data2!, model.PageSize);
             }
 
-            var data2 = await selectedNonEncrypted
-                              .OrderBy(x => (object?)x == null ? 0 : 1)
-                              .Take(model.PageSize)
-                              .ToListAsync(ct);
+            // Encrypted path
+            var encryptedQuery = query
+                .ApplyFiltering(gridifyModel, mapper)
+                .ApplySelect(model.PropertyName, mapper);
 
-            return new CursoredResponse<object?>(data2!, model.PageSize);
-         }
-
-         // Encrypted path
-         var encryptedQuery = query
-                              .ApplyFiltering(gridifyModel, mapper)
-                              .ApplySelect(model.PropertyName, mapper);
-
-         if (string.IsNullOrWhiteSpace(model.Filter))
-         {
-            bool hasNullLike;
-            try
+            if (string.IsNullOrWhiteSpace(model.Filter))
             {
-               // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-               hasNullLike = await encryptedQuery.AnyAsync(x => x == null, ct);
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-            {
-               hasNullLike = true;
+                bool hasNullLike;
+                try
+                {
+                    // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+                    hasNullLike = await encryptedQuery.AnyAsync(x => x == null, ct);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+                {
+                    hasNullLike = true;
+                }
+
+                return hasNullLike
+                    ? new CursoredResponse<object?>([null], model.PageSize)
+                    : new CursoredResponse<object?>([], model.PageSize);
             }
 
-            return hasNullLike
-               ? new CursoredResponse<object?>([null], model.PageSize)
-               : new CursoredResponse<object?>([], model.PageSize);
-         }
+            var selected = await encryptedQuery.FirstOrDefaultAsync(ct);
+            switch (selected)
+            {
+                case null:
+                case byte[] { Length: 0 }:
+                    return new CursoredResponse<object?>([null], model.PageSize);
+                case byte[] when decryptor == null:
+                    throw new KeyNotFoundException("Decryptor is required for encrypted properties.");
+                case byte[] sb:
+                    return new CursoredResponse<object?>([decryptor(sb)], model.PageSize);
+            }
 
-         var selected = await encryptedQuery.FirstOrDefaultAsync(ct);
-         switch (selected)
-         {
-            case null:
-            case byte[] { Length: 0 }:
-               return new CursoredResponse<object?>([null], model.PageSize);
-            case byte[] when decryptor == null:
-               throw new KeyNotFoundException("Decryptor is required for encrypted properties.");
-            case byte[] sb:
-               return new CursoredResponse<object?>([decryptor(sb)], model.PageSize);
-         }
+            if (selected is not IEnumerable<byte[]> seq)
+            {
+                throw new InvalidCastException(
+                    "Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.");
+            }
 
-         if (selected is not IEnumerable<byte[]> seq)
-         {
-            throw new InvalidCastException("Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.");
-         }
+            var ng = ((IEnumerable)seq).GetEnumerator();
+            using var ng1 = ng as IDisposable;
+            if (!ng.MoveNext())
+            {
+                return new CursoredResponse<object?>([null], model.PageSize);
+            }
 
-         var ng = ((IEnumerable)seq).GetEnumerator();
-         using var ng1 = ng as IDisposable;
-         if (!ng.MoveNext())
-         {
-            return new CursoredResponse<object?>([null], model.PageSize);
-         }
+            var firstObj = ng.Current;
+            if (firstObj is not byte[] first || first.Length == 0)
+            {
+                return new CursoredResponse<object?>([null], model.PageSize);
+            }
 
-         var firstObj = ng.Current;
-         if (firstObj is not byte[] first || first.Length == 0)
-         {
-            return new CursoredResponse<object?>([null], model.PageSize);
-         }
+            return decryptor == null
+                ? throw new KeyNotFoundException("Decryptor is required for encrypted properties.")
+                : new CursoredResponse<object?>([decryptor(first)], model.PageSize);
+        }
+        catch (Exception ex) when (
+            ex is GridifyFilteringException ||
+            ex is FormatException ||
+            ex is ArgumentException)
+        {
+            throw new GridifyException($"Error applying filtering and getting distinct values: {ex.Message}");
+        }
+    }
 
-         return decryptor == null
-            ? throw new KeyNotFoundException("Decryptor is required for encrypted properties.")
-            : new CursoredResponse<object?>([decryptor(first)], model.PageSize);
-      }
-      catch (Exception ex) when (
-        ex is GridifyFilteringException ||
-        ex is FormatException ||
-        ex is ArgumentException)
-      {
-         throw new GridifyException($"Error applying filtering and getting distinct values: {ex.Message}");
-      }
-   }
+    /// <summary>
+    ///     Perform aggregation operations on a property.
+    /// </summary>
+    public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
+        AggregateQueryModel model,
+        CancellationToken ct = default)
+        where TEntity : class
+    {
+        var mapper = RequireMapper<TEntity>();
+        var filtered = query.ApplyFiltering(model.ToGridifyQueryModel(), mapper)
+            .ApplySelect(model.PropertyName, mapper);
 
-   /// <summary>
-   /// Perform aggregation operations on a property.
-   /// </summary>
-   public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
-      AggregateQueryModel model,
-      CancellationToken ct = default)
-      where TEntity : class
-   {
-      var mapper = RequireMapper<TEntity>();
-      var filtered = query.ApplyFiltering(model.ToGridifyQueryModel(), mapper)
-                          .ApplySelect(model.PropertyName, mapper);
+        return model.AggregateType switch
+        {
+            AggregateType.UniqueCount => await filtered.Distinct()
+                .CountAsync(ct),
+            AggregateType.Sum => await filtered.SumAsync(x => Math.Round((decimal)x!, 8), ct),
+            AggregateType.Average => await filtered.AverageAsync(x => Math.Round((decimal)x!, 8), ct),
+            AggregateType.Min => await filtered.MinAsync(ct)!,
+            AggregateType.Max => await filtered.MaxAsync(ct)!,
+            _ => throw new NotImplementedException()
+        };
+    }
 
-      return model.AggregateType switch
-      {
-         AggregateType.UniqueCount => await filtered.Distinct()
-                                                    .CountAsync(ct),
-         AggregateType.Sum => await filtered.SumAsync(x => Math.Round((decimal)x!, 8), ct),
-         AggregateType.Average => await filtered.AverageAsync(x => Math.Round((decimal)x!, 8), ct),
-         AggregateType.Min => await filtered.MinAsync(ct)!,
-         AggregateType.Max => await filtered.MaxAsync(ct)!,
-         _ => throw new NotImplementedException()
-      };
-   }
+    /// <summary>
+    ///     Get available property mappings for an entity type.
+    /// </summary>
+    public static IEnumerable<MappingModel> GetMappings<TEntity>()
+    {
+        var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
 
-   /// <summary>
-   /// Get available property mappings for an entity type.
-   /// </summary>
-   public static IEnumerable<MappingModel> GetMappings<TEntity>()
-   {
-      var mapper = EntityGridifyMapperByType[typeof(TEntity)] as FilterMapper<TEntity>;
+        return mapper!.GetCurrentMaps()
+            .Select(x => new MappingModel(
+                x.From,
+                x.To.Body switch
+                {
+                    UnaryExpression ue => ue.Operand.Type.Name,
+                    MethodCallExpression mc => (mc.Arguments.LastOrDefault() as LambdaExpression)?.ReturnType.Name
+                                               ?? x.To.Body.Type.Name,
+                    _ => x.To.Body.Type.Name
+                }));
+    }
 
-      return mapper!.GetCurrentMaps()
-                    .Select(x => new MappingModel(
-                       x.From,
-                       x.To.Body switch
-                       {
-                          UnaryExpression ue => ue.Operand.Type.Name,
-                          MethodCallExpression mc => (mc.Arguments.LastOrDefault() as LambdaExpression)?.ReturnType.Name
-                                                     ?? x.To.Body.Type.Name,
-                          _ => x.To.Body.Type.Name
-                       }));
-   }
+    // ---------- Private helpers ----------
 
-   // ---------- Private helpers ----------
+    private static Expression<Func<TEntity, string?>> EfStringSelector<TEntity>(string propertyName)
+        where TEntity : class
+    {
+        var e = Expression.Parameter(typeof(TEntity), "e");
+        var body = Expression.Call(
+            typeof(EF),
+            nameof(EF.Property),
+            [typeof(string)],
+            e,
+            Expression.Constant(propertyName));
 
-   private static Expression<Func<TEntity, string?>> EfStringSelector<TEntity>(string propertyName)
-      where TEntity : class
-   {
-      var e = Expression.Parameter(typeof(TEntity), "e");
-      var body = Expression.Call(
-         typeof(EF),
-         nameof(EF.Property),
-         [typeof(string)],
-         e,
-         Expression.Constant(propertyName));
+        return Expression.Lambda<Func<TEntity, string?>>(body, e);
+    }
 
-      return Expression.Lambda<Func<TEntity, string?>>(body, e);
-   }
+    private static string? ExtractStarContainsTerm(string? filter, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(filter))
+        {
+            return null;
+        }
 
-   private static string? ExtractStarContainsTerm(string? filter, string propertyName)
-   {
-      if (string.IsNullOrWhiteSpace(filter))
-      {
-         return null;
-      }
+        var m = Regex.Match(
+            filter,
+            $@"(?i)\b{Regex.Escape(propertyName)}\s*=\s*\*(?<term>[^;,)]+)");
 
-      var m = Regex.Match(
-         filter,
-         $@"(?i)\b{Regex.Escape(propertyName)}\s*=\s*\*(?<term>[^;,)]+)");
+        if (!m.Success)
+        {
+            return null;
+        }
 
-      if (!m.Success)
-      {
-         return null;
-      }
+        var term = m.Groups["term"]
+            .Value
+            .Trim();
+        return term.Length == 0 ? null : term;
+    }
 
-      var term = m.Groups["term"]
-                  .Value
-                  .Trim();
-      return term.Length == 0 ? null : term;
-   }
+    private static bool IsStringColumn<TEntity>(IQueryable<TEntity> query, FilterMapper<TEntity> mapper, string name)
+        where TEntity : class
+    {
+        var db = TryGetDbContext(query);
+        var et = db?.Model.FindEntityType(typeof(TEntity));
+        var p = et?.FindProperty(name);
+        if (p != null)
+        {
+            return p.ClrType == typeof(string);
+        }
 
-   private static bool IsStringColumn<TEntity>(IQueryable<TEntity> query, FilterMapper<TEntity> mapper, string name)
-      where TEntity : class
-   {
-      var db = TryGetDbContext(query);
-      var et = db?.Model.FindEntityType(typeof(TEntity));
-      var p = et?.FindProperty(name);
-      if (p != null)
-      {
-         return p.ClrType == typeof(string);
-      }
+        var map = mapper.GetCurrentMaps()
+            .FirstOrDefault(m => m.From == name);
+        if (map == null)
+        {
+            return false;
+        }
 
-      var map = mapper.GetCurrentMaps()
-                      .FirstOrDefault(m => m.From == name);
-      if (map == null)
-      {
-         return false;
-      }
+        var body = map.To.Body is UnaryExpression { NodeType: ExpressionType.Convert } ue ? ue.Operand : map.To.Body;
+        return body.Type == typeof(string);
+    }
 
-      var body = map.To.Body is UnaryExpression { NodeType: ExpressionType.Convert } ue ? ue.Operand : map.To.Body;
-      return body.Type == typeof(string);
-   }
+    private static Expression<Func<TEntity, string?>> StringSelector<TEntity>(IQueryable<TEntity> query,
+        FilterMapper<TEntity> mapper,
+        string name)
+        where TEntity : class
+    {
+        var db = TryGetDbContext(query);
+        var et = db?.Model.FindEntityType(typeof(TEntity));
+        var p = et?.FindProperty(name);
 
-   private static Expression<Func<TEntity, string?>> StringSelector<TEntity>(IQueryable<TEntity> query,
-      FilterMapper<TEntity> mapper,
-      string name)
-      where TEntity : class
-   {
-      var db = TryGetDbContext(query);
-      var et = db?.Model.FindEntityType(typeof(TEntity));
-      var p = et?.FindProperty(name);
+        if (p != null)
+        {
+            return EfStringSelector<TEntity>(name);
+        }
 
-      if (p != null)
-      {
-         return EfStringSelector<TEntity>(name);
-      }
-
-      var map = mapper.GetCurrentMaps()
+        var map = mapper.GetCurrentMaps()
                       .FirstOrDefault(m => m.From == name)
-                ?? throw new KeyNotFoundException($"No map found for '{name}'.");
+                  ?? throw new KeyNotFoundException($"No map found for '{name}'.");
 
-      var param = map.To.Parameters[0];
-      var body = map.To.Body is UnaryExpression { NodeType: ExpressionType.Convert } ue ? ue.Operand : map.To.Body;
+        var param = map.To.Parameters[0];
+        var body = map.To.Body is UnaryExpression { NodeType: ExpressionType.Convert } ue ? ue.Operand : map.To.Body;
 
-      return body.Type != typeof(string)
-         ? throw new InvalidOperationException($"Map '{name}' must return string. Actual: {body.Type}.")
-         : Expression.Lambda<Func<TEntity, string?>>(body, param);
-   }
+        return body.Type != typeof(string)
+            ? throw new InvalidOperationException($"Map '{name}' must return string. Actual: {body.Type}.")
+            : Expression.Lambda<Func<TEntity, string?>>(body, param);
+    }
 
-   private static DbContext? TryGetDbContext<TEntity>(IQueryable<TEntity> query)
-   {
-      if (query is not IInfrastructure<IServiceProvider> infra)
-      {
-         return null;
-      }
+    private static DbContext? TryGetDbContext<TEntity>(IQueryable<TEntity> query)
+    {
+        if (query is not IInfrastructure<IServiceProvider> infra)
+        {
+            return null;
+        }
 
-      return infra.Instance.GetService<ICurrentDbContext>()
-                  ?.Context;
-   }
+        return infra.Instance.GetService<ICurrentDbContext>()
+            ?.Context;
+    }
 }
