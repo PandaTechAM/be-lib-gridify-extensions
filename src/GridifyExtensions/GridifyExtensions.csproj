@@ -21,8 +21,8 @@
     <PackageIcon>pandatech.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
-    <Version>4.1.3</Version>
-    <PackageReleaseNotes>Tooling modernization: xUnit v3 test migration, dependency updates, XML documentation on public APIs, and standardized editorconfig/gitignore/global.json.</PackageReleaseNotes>
+    <Version>4.2.0</Version>
+    <PackageReleaseNotes>Add opt-in FilterMapper.AddMapForNaturalSortKey. Distinct-values queries use ColumnDistinctValueQueryModel (renamed from ColumnDistinctValueCursoredQueryModel), which now inherits GridifyQueryModel for standard Page/PageSize offset paging. ColumnDistinctValuesAsync orders keyed columns by their natural sort key using (value, key) distinct, and orders the no-search path deterministically by value.</PackageReleaseNotes>
 
     <!-- Build quality -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
