@@ -1,4 +1,4 @@
-﻿using GridifyExtensions.Demo.Context;
+using GridifyExtensions.Demo.Context;
 using GridifyExtensions.Extensions;
 using GridifyExtensions.Models;
 
@@ -43,6 +43,17 @@ public static class Endpoints
         g.MapGet("/distinct",
             async (PostgresContext db,
                 [AsParameters] ColumnDistinctValueCursoredQueryModel request,
+                CancellationToken ct) =>
+            {
+                var response = await db.Estates
+                    .ColumnDistinctValuesAsync(request, ct: ct);
+
+                return Results.Ok(response);
+            });
+
+        g.MapGet("/distinct/paged",
+            async (PostgresContext db,
+                [AsParameters] ColumnDistinctValueQueryModel request,
                 CancellationToken ct) =>
             {
                 var response = await db.Estates
