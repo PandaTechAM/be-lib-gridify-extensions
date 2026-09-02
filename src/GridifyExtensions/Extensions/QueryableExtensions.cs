@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Frozen;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
@@ -316,6 +316,164 @@ public static class QueryableExtensions
     }
 
     /// <summary>
+    ///     Get distinct values for a column with Page/PageSize (offset) pagination. Returns a
+    ///     <see cref="PagedResponse{T}" /> with the total distinct-value count, the same paged response the
+    ///     rest of the paged endpoints use.
+    /// </summary>
+    public static async Task<PagedResponse<object?>> ColumnDistinctValuesAsync<TEntity>(
+        this IQueryable<TEntity> query,
+        ColumnDistinctValueQueryModel model,
+        Func<byte[], string>? decryptor = null,
+        CancellationToken ct = default)
+        where TEntity : class
+    {
+        try
+        {
+            var mapper = RequireMapper<TEntity>();
+            var gridifyModel = model;
+
+            if (!mapper.IsEncrypted(model.PropertyName))
+            {
+                var skip = (model.Page - 1) * model.PageSize;
+
+                // Keyed path: distinct values ordered by an opt-in natural sort key column, offset paged.
+                // Distinct is taken on the (value, key) pair so key collisions never drop a value, and the raw
+                // value is the final deterministic tie-break.
+                if (mapper.TryGetDistinctOrderKey(model.PropertyName, out var orderKeyColumn))
+                {
+                    var selector = BuildDistinctRowSelector(mapper, model.PropertyName, orderKeyColumn);
+
+                    var rows = query
+                        .ApplyFiltering(gridifyModel, mapper)
+                        .Select(selector)
+                        .Distinct();
+
+                    var keyedTerm = ExtractStarContainsTerm(model.Filter, model.PropertyName);
+                    var valueIsString = IsStringColumn(query, mapper, model.PropertyName);
+
+                    var keyedTotal = await rows.LongCountAsync(ct);
+                    var keyedData = await OrderDistinctRows(rows, keyedTerm, valueIsString)
+                        .Skip(skip)
+                        .Take(model.PageSize)
+                        .Select(r => r.Value)
+                        .ToListAsync(ct);
+
+                    return new PagedResponse<object?>(keyedData, model.Page, model.PageSize, keyedTotal);
+                }
+
+                var selectedNonEncrypted = query
+                    .ApplyFiltering(gridifyModel, mapper)
+                    .ApplySelect(model.PropertyName, mapper)
+                    .Distinct();
+
+                var term = ExtractStarContainsTerm(model.Filter, model.PropertyName);
+                if (!string.IsNullOrEmpty(term) && IsStringColumn(query, mapper, model.PropertyName))
+                {
+                    var termLower = term.ToLower();
+
+                    var projected = query
+                        .ApplyFiltering(gridifyModel, mapper)
+                        .Select(StringSelector(query, mapper, model.PropertyName))
+                        .Distinct();
+
+                    var searchTotal = await projected.LongCountAsync(ct);
+                    var data = await projected
+                        .OrderBy(x => x == null ? 0 : 1)
+                        .ThenBy(x => x != null && x.ToLower() == termLower ? 0 : 1)
+                        .ThenBy(x => x == null ? int.MaxValue : x.Length)
+                        .ThenBy(x => x)
+                        .Skip(skip)
+                        .Take(model.PageSize)
+                        .ToListAsync(ct);
+
+                    return new PagedResponse<object?>(data.Cast<object?>()
+                            .ToList(),
+                        model.Page,
+                        model.PageSize,
+                        searchTotal);
+                }
+
+                // No key, no search: deterministic order (null first, then value ascending). Offset paged.
+                var noSearchTotal = await selectedNonEncrypted.LongCountAsync(ct);
+                var data2 = await selectedNonEncrypted
+                    .OrderBy(x => x == null ? 0 : 1)
+                    .ThenBy(x => x)
+                    .Skip(skip)
+                    .Take(model.PageSize)
+                    .ToListAsync(ct);
+
+                return new PagedResponse<object?>(data2!, model.Page, model.PageSize, noSearchTotal);
+            }
+
+            // Encrypted path: at most one representative value is returned (encrypted columns cannot be paged
+            // meaningfully), so the total count is simply the number of values returned.
+            var encryptedQuery = query
+                .ApplyFiltering(gridifyModel, mapper)
+                .ApplySelect(model.PropertyName, mapper);
+
+            if (string.IsNullOrWhiteSpace(model.Filter))
+            {
+                bool hasNullLike;
+                try
+                {
+                    // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+                    hasNullLike = await encryptedQuery.AnyAsync(x => x == null, ct);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+                {
+                    hasNullLike = true;
+                }
+
+                return hasNullLike
+                    ? new PagedResponse<object?>([null], model.Page, model.PageSize, 1)
+                    : new PagedResponse<object?>([], model.Page, model.PageSize, 0);
+            }
+
+            var selected = await encryptedQuery.FirstOrDefaultAsync(ct);
+            switch (selected)
+            {
+                case null:
+                case byte[] { Length: 0 }:
+                    return new PagedResponse<object?>([null], model.Page, model.PageSize, 1);
+                case byte[] when decryptor == null:
+                    throw new KeyNotFoundException("Decryptor is required for encrypted properties.");
+                case byte[] sb:
+                    return new PagedResponse<object?>([decryptor(sb)], model.Page, model.PageSize, 1);
+            }
+
+            if (selected is not IEnumerable<byte[]> seq)
+            {
+                throw new InvalidCastException(
+                    "Encrypted selector did not return a byte[] or IEnumerable<byte[]> value.");
+            }
+
+            var ng = ((IEnumerable)seq).GetEnumerator();
+            using var ng1 = ng as IDisposable;
+            if (!ng.MoveNext())
+            {
+                return new PagedResponse<object?>([null], model.Page, model.PageSize, 1);
+            }
+
+            var firstObj = ng.Current;
+            if (firstObj is not byte[] first || first.Length == 0)
+            {
+                return new PagedResponse<object?>([null], model.Page, model.PageSize, 1);
+            }
+
+            return decryptor == null
+                ? throw new KeyNotFoundException("Decryptor is required for encrypted properties.")
+                : new PagedResponse<object?>([decryptor(first)], model.Page, model.PageSize, 1);
+        }
+        catch (Exception ex) when (
+            ex is GridifyFilteringException ||
+            ex is FormatException ||
+            ex is ArgumentException)
+        {
+            throw new GridifyException($"Error applying filtering and getting distinct values: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     ///     Perform aggregation operations on a property.
     /// </summary>
     public static async Task<object> AggregateAsync<TEntity>(this IQueryable<TEntity> query,
@@ -454,4 +612,90 @@ public static class QueryableExtensions
         return infra.Instance.GetService<ICurrentDbContext>()
             ?.Context;
     }
+    // ---------- Keyed distinct-values helpers ----------
+
+    /// <summary>
+    ///     Build <c>e =&gt; new DistinctRow { Value = &lt;valueMap&gt;, Key = &lt;keyMap&gt; }</c> from the two
+    ///     registered map expressions, sharing a single parameter so EF can translate the projection.
+    /// </summary>
+    private static Expression<Func<TEntity, DistinctRow>> BuildDistinctRowSelector<TEntity>(
+         FilterMapper<TEntity> mapper,
+         string valueColumn,
+         string keyColumn)
+         where TEntity : class
+    {
+        var maps = mapper.GetCurrentMaps()
+            .ToList();
+        var valueMap = maps.FirstOrDefault(m => m.From == valueColumn)
+                       ?? throw new KeyNotFoundException($"No map found for '{valueColumn}'.");
+        var keyMap = maps.FirstOrDefault(m => m.From == keyColumn)
+                     ?? throw new KeyNotFoundException($"No map found for '{keyColumn}'.");
+
+        var param = Expression.Parameter(typeof(TEntity), "e");
+        var valueBody = ReplaceParameter(valueMap.To.Body, valueMap.To.Parameters[0], param);
+        var keyBody = ReplaceParameter(keyMap.To.Body, keyMap.To.Parameters[0], param);
+
+        var rowType = typeof(DistinctRow);
+        var init = Expression.MemberInit(
+            Expression.New(rowType),
+            Expression.Bind(rowType.GetProperty(nameof(DistinctRow.Value))!, EnsureObject(valueBody)),
+            Expression.Bind(rowType.GetProperty(nameof(DistinctRow.Key))!, EnsureObject(keyBody)));
+
+        return Expression.Lambda<Func<TEntity, DistinctRow>>(init, param);
+    }
+
+    /// <summary>
+    ///     Order distinct rows: null values first, then (when searching a string column) values that start with
+    ///     the term, then by the natural sort key, then by the raw value as a deterministic tie-break for key
+    ///     collisions.
+    /// </summary>
+    private static IOrderedQueryable<DistinctRow> OrderDistinctRows(
+         IQueryable<DistinctRow> rows,
+         string? term,
+         bool valueIsString)
+    {
+        var termLower = term?.ToLower();
+
+        if (!string.IsNullOrEmpty(termLower) && valueIsString)
+        {
+            return rows
+                .OrderBy(r => r.Value == null ? 0 : 1)
+                .ThenBy(r => r.Value != null && ((string)r.Value).ToLower()
+                    .StartsWith(termLower)
+                    ? 0
+                    : 1)
+                .ThenBy(r => r.Key)
+                .ThenBy(r => r.Value);
+        }
+
+        return rows
+            .OrderBy(r => r.Value == null ? 0 : 1)
+            .ThenBy(r => r.Key)
+            .ThenBy(r => r.Value);
+    }
+
+    private static Expression EnsureObject(Expression expression)
+    {
+        return expression.Type == typeof(object) ? expression : Expression.Convert(expression, typeof(object));
+    }
+
+    private static Expression ReplaceParameter(Expression body, ParameterExpression from, ParameterExpression to)
+    {
+        return new ParameterReplaceVisitor(from, to).Visit(body);
+    }
+
+    private sealed class DistinctRow
+    {
+        public object? Value { get; set; }
+        public object? Key { get; set; }
+    }
+
+    private sealed class ParameterReplaceVisitor(ParameterExpression from, ParameterExpression to) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            return node == from ? to : base.VisitParameter(node);
+        }
+    }
+
 }

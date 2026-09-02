@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 using Gridify;
 using GridifyExtensions.Abstractions;
+using GridifyExtensions.Exceptions;
 
 namespace GridifyExtensions.Models;
 
@@ -12,6 +13,9 @@ public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
     private const string Desc = " desc";
     private const string Separator = ", ";
     private readonly HashSet<string> _encryptedColumns = [];
+
+    private readonly Dictionary<string, string> _distinctOrderKeyByColumn =
+        new(StringComparer.OrdinalIgnoreCase);
 
     private string _defaultOrderExpression = string.Empty;
 
@@ -32,6 +36,36 @@ public class FilterMapper<T> : GridifyMapper<T>, IOrderThenBy
     internal bool IsEncrypted(string column)
     {
         return _encryptedColumns.Contains(column);
+    }
+
+    /// <summary>
+    ///     Order the distinct values of <paramref name="column" /> by the mapped column
+    ///     <paramref name="orderKeyColumn" /> instead of by the value itself. Opt-in; used only by
+    ///     <c>ColumnDistinctValuesAsync</c>. Both names must already be registered maps, otherwise this throws at
+    ///     registration time so a typo fails at startup rather than on the first request.
+    /// </summary>
+    public FilterMapper<T> AddMapForNaturalSortKey(string column, string orderKeyColumn)
+    {
+        if (!HasMap(column))
+        {
+            throw new GridifyException(
+                $"Cannot add distinct order key: column '{column}' is not a registered map.");
+        }
+
+        if (!HasMap(orderKeyColumn))
+        {
+            throw new GridifyException(
+                $"Cannot add distinct order key: order key column '{orderKeyColumn}' is not a registered map.");
+        }
+
+        _distinctOrderKeyByColumn[column] = orderKeyColumn;
+
+        return this;
+    }
+
+    internal bool TryGetDistinctOrderKey(string column, out string orderKeyColumn)
+    {
+        return _distinctOrderKeyByColumn.TryGetValue(column, out orderKeyColumn!);
     }
 
     internal string GetDefaultOrderExpression()
