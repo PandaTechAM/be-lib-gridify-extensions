@@ -22,7 +22,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
     <Version>4.2.0</Version>
-    <PackageReleaseNotes>Add opt-in FilterMapper.AddMapForNaturalSortKey. Distinct-values queries use ColumnDistinctValueQueryModel (renamed from ColumnDistinctValueCursoredQueryModel), which now inherits GridifyQueryModel for standard Page/PageSize offset paging. ColumnDistinctValuesAsync orders keyed columns by their natural sort key using (value, key) distinct, and orders the no-search path deterministically by value.</PackageReleaseNotes>
+    <PackageReleaseNotes>Add opt-in FilterMapper.AddMapForNaturalSortKey. Distinct-values queries use ColumnDistinctValueQueryModel , which now inherits GridifyQueryModel for standard Page/PageSize offset paging. ColumnDistinctValuesAsync orders keyed columns by their natural sort key using (value, key) distinct, and orders the no-search path deterministically by value.</PackageReleaseNotes>
 
     <!-- Build quality -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
