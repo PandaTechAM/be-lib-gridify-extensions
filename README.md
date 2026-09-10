@@ -139,6 +139,11 @@ var decrypted = await query.ColumnDistinctValuesAsync(
 );
 ```
 
+When the filter has a `=*` (contains) term on the requested string column, the values are ranked for autocomplete:
+exact match, then values starting with the term, then values with a word starting with the term, then the remaining
+matches. Within a rank, plain columns order by length and value; columns with a natural sort key
+(`AddMapForNaturalSortKey`) order by that key.
+
 ### Aggregations
 
 ```csharp

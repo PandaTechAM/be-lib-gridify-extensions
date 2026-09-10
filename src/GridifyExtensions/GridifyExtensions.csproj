@@ -21,8 +21,8 @@
     <PackageIcon>pandatech.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
-    <Version>4.2.0</Version>
-    <PackageReleaseNotes>Add opt-in FilterMapper.AddMapForNaturalSortKey. Distinct-values queries use ColumnDistinctValueQueryModel , which now inherits GridifyQueryModel for standard Page/PageSize offset paging. ColumnDistinctValuesAsync orders keyed columns by their natural sort key using (value, key) distinct, and orders the no-search path deterministically by value.</PackageReleaseNotes>
+    <Version>4.3.0</Version>
+    <PackageReleaseNotes>ColumnDistinctValuesAsync ranks the hits of a =* (contains) search on a string column: exact match, then values starting with the term, then values with a word starting with the term, then the remaining matches. Plain columns then order by length and value, keyed columns by their natural sort key. Applies to the cursored and the paged overloads.</PackageReleaseNotes>
 
     <!-- Build quality -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
@@ -52,7 +52,7 @@
   <ItemGroup>
     <PackageReference Include="Gridify.EntityFramework" Version="2.19.1"/>
     <PackageReference Include="Pandatech.Analyzers" Version="[2.1.0]" PrivateAssets="all"/>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="[10.28.0.143324]">
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="[10.34.0.3385]">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using Gridify;
@@ -229,7 +230,7 @@ public static class QueryableExtensions
 
                     var data = await projected
                         .OrderBy(x => x == null ? 0 : 1)
-                        .ThenBy(x => x != null && x.ToLower() == termLower ? 0 : 1)
+                        .ThenBy(SearchRank(termLower))
                         .ThenBy(x => x == null ? int.MaxValue : x.Length)
                         .ThenBy(x => x)
                         .Take(model.PageSize)
@@ -379,7 +380,7 @@ public static class QueryableExtensions
                     var searchTotal = await projected.LongCountAsync(ct);
                     var data = await projected
                         .OrderBy(x => x == null ? 0 : 1)
-                        .ThenBy(x => x != null && x.ToLower() == termLower ? 0 : 1)
+                        .ThenBy(SearchRank(termLower))
                         .ThenBy(x => x == null ? int.MaxValue : x.Length)
                         .ThenBy(x => x)
                         .Skip(skip)
@@ -554,6 +555,29 @@ public static class QueryableExtensions
         return term.Length == 0 ? null : term;
     }
 
+    /// <summary>
+    ///     Rank of a value against a search term, for ordering the hits of a contains search: exact match, then
+    ///     values starting with the term, then values with a later word starting with the term, then the rest.
+    ///     Nulls get the last rank; callers already order them first.
+    /// </summary>
+    [SuppressMessage("Performance",
+        "CA1862:Use the 'StringComparison' method overloads to perform case-insensitive string comparisons",
+        Justification = "Expression tree translated to SQL by EF Core; the StringComparison overloads are not translatable.")]
+    private static Expression<Func<string?, int>> SearchRank(string termLower)
+    {
+        var wordTermLower = " " + termLower;
+
+        return x => x == null
+            ? 3
+            : x.ToLower() == termLower
+                ? 0
+                : x.ToLower().StartsWith(termLower)
+                    ? 1
+                    : x.ToLower().Contains(wordTermLower)
+                        ? 2
+                        : 3;
+    }
+
     private static bool IsStringColumn<TEntity>(IQueryable<TEntity> query, FilterMapper<TEntity> mapper, string name)
         where TEntity : class
     {
@@ -645,9 +669,8 @@ public static class QueryableExtensions
     }
 
     /// <summary>
-    ///     Order distinct rows: null values first, then (when searching a string column) values that start with
-    ///     the term, then by the natural sort key, then by the raw value as a deterministic tie-break for key
-    ///     collisions.
+    ///     Order distinct rows: null values first, then (when searching a string column) by <see cref="SearchRank" />,
+    ///     then by the natural sort key, then by the raw value as a deterministic tie-break for key collisions.
     /// </summary>
     private static IOrderedQueryable<DistinctRow> OrderDistinctRows(
          IQueryable<DistinctRow> rows,
@@ -660,10 +683,7 @@ public static class QueryableExtensions
         {
             return rows
                 .OrderBy(r => r.Value == null ? 0 : 1)
-                .ThenBy(r => r.Value != null && ((string)r.Value).ToLower()
-                    .StartsWith(termLower)
-                    ? 0
-                    : 1)
+                .ThenBy(SearchRankOfRow(termLower))
                 .ThenBy(r => r.Key)
                 .ThenBy(r => r.Value);
         }
@@ -674,12 +694,25 @@ public static class QueryableExtensions
             .ThenBy(r => r.Value);
     }
 
+    /// <summary>
+    ///     <see cref="SearchRank" /> applied to <see cref="DistinctRow.Value" /> cast to string, so keyed and plain
+    ///     string columns rank search hits identically.
+    /// </summary>
+    private static Expression<Func<DistinctRow, int>> SearchRankOfRow(string termLower)
+    {
+        var rank = SearchRank(termLower);
+        var row = Expression.Parameter(typeof(DistinctRow), "r");
+        var value = Expression.Convert(Expression.Property(row, nameof(DistinctRow.Value)), typeof(string));
+
+        return Expression.Lambda<Func<DistinctRow, int>>(ReplaceParameter(rank.Body, rank.Parameters[0], value), row);
+    }
+
     private static Expression EnsureObject(Expression expression)
     {
         return expression.Type == typeof(object) ? expression : Expression.Convert(expression, typeof(object));
     }
 
-    private static Expression ReplaceParameter(Expression body, ParameterExpression from, ParameterExpression to)
+    private static Expression ReplaceParameter(Expression body, ParameterExpression from, Expression to)
     {
         return new ParameterReplaceVisitor(from, to).Visit(body);
     }
@@ -690,7 +723,7 @@ public static class QueryableExtensions
         public object? Key { get; set; }
     }
 
-    private sealed class ParameterReplaceVisitor(ParameterExpression from, ParameterExpression to) : ExpressionVisitor
+    private sealed class ParameterReplaceVisitor(ParameterExpression from, Expression to) : ExpressionVisitor
     {
         protected override Expression VisitParameter(ParameterExpression node)
         {

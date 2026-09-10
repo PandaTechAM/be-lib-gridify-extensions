@@ -30,7 +30,7 @@ pagination, aggregation, and column distinct value queries for EF Core. Used by 
 - `GridifyCursoredQueryModel` and `AggregateQueryModel` are standalone (no Gridify base) with internal
   `ToGridifyQueryModel()` for interop with Gridify's filtering
 - Encrypted columns tracked via `HashSet<string>` in FilterMapper; decryption happens client-side via `Func<byte[], string>`
-- String distinct values use smart ordering: nulls first, exact match, length, alphabetical
+- String distinct values with a `=*` search term use smart ordering: nulls first, then `SearchRank` (exact, starts with, word starts with, rest), then length and value (natural sort key instead, on keyed columns)
 - `PagedResponse<T>` and `CursoredResponse<T>` are records
 
 ## Build
